@@ -7,26 +7,41 @@ import {
   TextField,
   Typography,
   Paper,
-  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
   List,
   ListItemButton,
   ListItemText,
-  InputAdornment,
+  Menu,
+  MenuItem,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import SearchIcon from '@mui/icons-material/Search';
 import { useNavigate } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
 
-// 🔹 Lista mock de médicos (vinda do Admin)
+//Lista de médicos
 const MEDICOS_MOCK = [
   { id: 11, nome: 'Dra. Ana Pereira' },
   { id: 12, nome: 'Dr. Bruno Lima' },
   { id: 13, nome: 'Dr. Carlos Mendes' },
   { id: 14, nome: 'Dra. Fernanda Silva' },
+];
+
+// lista de sintomas para o menu
+const SINTOMAS_DISPONIVEIS = [
+  'Febre',
+  'Dor de cabeça',
+  'Tosse',
+  'Dor de garganta',
+  'Cansaço',
+  'Dores musculares',
+  'Falta de ar',
+  'Náusea',
+  'Vômito',
+  'Tontura',
+  'Coriza',
+  'Fadiga',
 ];
 
 export default function AtendimentoMedico() {
@@ -42,9 +57,12 @@ export default function AtendimentoMedico() {
     prescricao: '',
   });
 
-  // 🔍 Controle do modal de busca de médicos
+  // controle do modal de busca de médicos (o seu de antes)
   const [search, setSearch] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
+
+  // ✅ NOVO: controle do menu de SINTOMAS (estilo do print)
+  const [sintomaAnchor, setSintomaAnchor] = useState<null | HTMLElement>(null);
 
   const handleSelectMedico = (nome: string) => {
     setForm({ ...form, medico: nome });
@@ -71,10 +89,29 @@ export default function AtendimentoMedico() {
     });
   };
 
-  // 🔎 Médicos filtrados
+  // médicos filtrados (usado no modal)
   const filteredMedicos = MEDICOS_MOCK.filter((m) =>
     m.nome.toLowerCase().includes(search.toLowerCase())
   );
+
+  // 👇 abre o menu de sintomas (estilo do print)
+  const abrirMenuSintomas = (event: React.MouseEvent<HTMLElement>) => {
+    setSintomaAnchor(event.currentTarget);
+  };
+
+  const fecharMenuSintomas = () => {
+    setSintomaAnchor(null);
+  };
+
+  const selecionarSintoma = (sintoma: string) => {
+    const atuais = form.sintomas ? form.sintomas.split(', ') : [];
+    // permite vários sintomas
+    if (!atuais.includes(sintoma)) {
+      const novo = [...atuais, sintoma].join(', ');
+      setForm({ ...form, sintomas: novo });
+    }
+    fecharMenuSintomas();
+  };
 
   return (
     <Container maxWidth="md" sx={{ py: 5 }}>
@@ -86,7 +123,7 @@ export default function AtendimentoMedico() {
           backgroundColor: '#f9fafc',
         }}
       >
-        {/* 🔙 Botão Voltar */}
+        {/*Botão Voltar */}
         <Box display="flex" alignItems="center" mb={2}>
           <Button
             startIcon={<ArrowBackIcon />}
@@ -102,12 +139,16 @@ export default function AtendimentoMedico() {
           </Button>
         </Box>
 
-        <Typography variant="h5" fontWeight="bold" mb={3} color="primary">
-          Atendimento Médico
+        <Typography variant="h5" fontWeight="bold" mb={4} color="primary">
+          Registro de Atendimento
         </Typography>
 
-        <Typography variant="body1" mb={3}>
-          Registre as informações do atendimento realizado com o paciente.
+        <Typography variant="h6" color="text.secondary" mb={1}>
+          Preencha abaixo as informações do seu atendimento médico.
+        </Typography>
+
+        <Typography variant="h6" fontWeight="medium" color="text.secondary" mb={1}>
+          Os dados ajudam a manter um histórico atualizado e completo das suas consultas.
         </Typography>
 
         <Box component="form" onSubmit={handleSubmit}>
@@ -140,69 +181,57 @@ export default function AtendimentoMedico() {
               />
             </Grid>
 
-            {/* 🔍 Médico Responsável */}
+            {/* Sintomas */}
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="Médico Responsável"
-                value={form.medico}
-                placeholder="Selecione ou procure o médico"
+                label="Sintomas"
+                value={form.sintomas}
+                placeholder="Selecione sintomas"
+                onClick={abrirMenuSintomas}
                 InputProps={{
                   readOnly: true,
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton onClick={() => setOpenDialog(true)}>
-                        <SearchIcon />
-                      </IconButton>
-                    </InputAdornment>
-                  ),
+                  sx: {
+                    cursor: 'pointer',
+                    minHeight: 60,
+                    borderRadius: 9999,
+                    pl: 2,
+                  },
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 9999,
+                  },
                 }}
               />
-            </Grid>
 
-            {/* Sintomas */}
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                multiline
-                minRows={3}
-                label="Sintomas"
-                name="sintomas"
-                value={form.sintomas}
-                onChange={(e) =>
-                  setForm({ ...form, sintomas: e.target.value })
-                }
-              />
-            </Grid>
-
-            {/* Diagnóstico */}
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                multiline
-                minRows={3}
-                label="Diagnóstico"
-                name="diagnostico"
-                value={form.diagnostico}
-                onChange={(e) =>
-                  setForm({ ...form, diagnostico: e.target.value })
-                }
-              />
-            </Grid>
-
-            {/* Prescrição */}
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                multiline
-                minRows={3}
-                label="Prescrição / Observações"
-                name="prescricao"
-                value={form.prescricao}
-                onChange={(e) =>
-                  setForm({ ...form, prescricao: e.target.value })
-                }
-              />
+              <Menu
+                anchorEl={sintomaAnchor}
+                open={Boolean(sintomaAnchor)}
+                onClose={fecharMenuSintomas}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+                PaperProps={{
+                  sx: {
+                    mt: 1,
+                    borderRadius: 4,
+                    minWidth: 240,
+                    maxHeight: 300,
+                    overflowY: 'auto',
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
+                  },
+                }}
+              >
+                {SINTOMAS_DISPONIVEIS.map((s) => (
+                  <MenuItem
+                    key={s}
+                    onClick={() => selecionarSintoma(s)}
+                    sx={{ py: 1, fontWeight: 500 }}
+                  >
+                    {s}
+                  </MenuItem>
+                ))}
+              </Menu>
             </Grid>
 
             {/* Botão salvar */}
@@ -223,32 +252,6 @@ export default function AtendimentoMedico() {
           </Grid>
         </Box>
       </Paper>
-
-      {/* 🔍 Modal de seleção de médico */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} fullWidth>
-        <DialogTitle>Selecionar Médico</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            placeholder="Digite o nome do médico..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-          <List>
-            {filteredMedicos.map((m) => (
-              <ListItemButton key={m.id} onClick={() => handleSelectMedico(m.nome)}>
-                <ListItemText primary={m.nome} />
-              </ListItemButton>
-            ))}
-            {filteredMedicos.length === 0 && (
-              <Typography color="text.secondary" align="center" py={2}>
-                Nenhum médico encontrado.
-              </Typography>
-            )}
-          </List>
-        </DialogContent>
-      </Dialog>
     </Container>
   );
 }
