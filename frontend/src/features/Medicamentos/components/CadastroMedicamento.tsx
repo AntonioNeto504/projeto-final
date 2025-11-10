@@ -28,15 +28,14 @@ const CadastroMedicamento: React.FC<CadastroMedicamentoProps> = ({
 }) => {
     const navigate = useNavigate();
     const [step, setStep] = useState<number>(1);
-
     const [form, setForm] = useState<Medicamento>({
         nome: '',
         dosagem: '',
         quantidade: '',
         tarja: 'comum' as TarjaMedicamento,
         dataMedicamento: '',
-        dataInicio: '',       
-        dataFim: '',          
+        dataInicio: '',
+        dataFim: '',
         horarioMedicamento: '',
         contatoEmergencia: '',
     });
