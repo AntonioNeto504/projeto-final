@@ -1,7 +1,9 @@
 package br.pucgo.ads.projetointegrador.plataforma.service.impl;
 
+import br.pucgo.ads.projetointegrador.plataforma.dto.JwtAuthResponse;
 import br.pucgo.ads.projetointegrador.plataforma.dto.LoginDto;
 import br.pucgo.ads.projetointegrador.plataforma.dto.SignupDto;
+import br.pucgo.ads.projetointegrador.plataforma.entity.Permission;
 import br.pucgo.ads.projetointegrador.plataforma.entity.Role;
 import br.pucgo.ads.projetointegrador.plataforma.entity.User;
 import br.pucgo.ads.projetointegrador.plataforma.exception.ApiException;
@@ -18,6 +20,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -42,7 +47,8 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public String login(LoginDto loginDto) {
+    public JwtAuthResponse login(LoginDto loginDto) {
+        // 1. Autenticar o usuário
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         loginDto.getUsernameOrEmail(),
@@ -52,7 +58,52 @@ public class AuthServiceImpl implements AuthService {
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        return jwtTokenProvider.generateToken(authentication);
+        // 2. Gerar o token JWT
+        String token = jwtTokenProvider.generateToken(authentication);
+
+        // 3. Buscar usuário com role e permissões carregadas (query otimizada)
+        User user = userRepository.findByUsernameOrEmailWithPermissions(loginDto.getUsernameOrEmail())
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
+
+        // 4. Combinar permissões do Role + Permissões diretas do User
+        Set<Permission> allPermissions = new HashSet<>();
+        
+        // Permissões do Role
+        if (user.getRole() != null && user.getRole().getPermissions() != null) {
+            allPermissions.addAll(user.getRole().getPermissions());
+        }
+        
+        // Permissões diretas do User
+        if (user.getPermissions() != null) {
+            allPermissions.addAll(user.getPermissions());
+        }
+
+        // 5. Montar o DTO de resposta
+        JwtAuthResponse response = new JwtAuthResponse();
+        response.setAccessToken(token);
+        response.setTokenType("Bearer");
+        response.setUserId(user.getId());
+        response.setUsername(user.getUsername());
+        response.setEmail(user.getEmail());
+        response.setName(user.getName());
+        
+        if (user.getRole() != null) {
+            response.setRoleName(user.getRole().getName());
+            response.setRoleCode(user.getRole().getCode());
+        }
+        
+        // Converter permissões para formato JSON {id: nome}
+        Set<Map<String, Object>> permissionsJson = allPermissions.stream()
+                .map(permission -> Map.of(
+                        "id", (Object) permission.getId(),
+                        "name", (Object) permission.getName(),
+                        "module_id", (Object) (permission.getModule() != null ? permission.getModule().getId() : "")
+                ))
+                .collect(Collectors.toSet());
+        
+        response.setPermissions(permissionsJson);
+
+        return response;
     }
 
     @Override
