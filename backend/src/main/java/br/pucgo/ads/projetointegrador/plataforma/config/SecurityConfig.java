@@ -34,21 +34,8 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource))
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                // Endpoints públicos de autenticação
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
-                
-                // Endpoints dos outros grupos (protegidos)
-                .requestMatchers("/api/grupo1/**").authenticated()
-                .requestMatchers("/api/grupo2/**").authenticated()
-                .requestMatchers("/api/grupo3/**").authenticated()
-                .requestMatchers("/api/grupo4/**").authenticated()
-                .requestMatchers("/api/grupo5/**").authenticated()
-                .requestMatchers("/api/grupo6/**").authenticated()
-                
-                // Endpoints de gerenciamento de usuários
-                .requestMatchers("/api/users/**").authenticated()
-                
-                // Qualquer outra requisição precisa autenticação
                 .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex
