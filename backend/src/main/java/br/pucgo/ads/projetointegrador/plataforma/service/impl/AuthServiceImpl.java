@@ -126,7 +126,7 @@ public class AuthServiceImpl implements AuthService {
                 );
 
         } else {
-            role = roleRepository.findByName("USER")
+            role = roleRepository.findByName("ROLE_USER")
                 .orElseThrow(() ->
                     new ApiException(HttpStatus.BAD_REQUEST,
                         "Role não encontrada: USER")
