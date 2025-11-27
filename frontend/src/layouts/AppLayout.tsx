@@ -1,21 +1,15 @@
-// src/layouts/AppLayout.tsx
 import { AppBar, Avatar, Box, Container, Modal, Toolbar, Typography, Button } from '@mui/material';
 import { deepPurple } from '@mui/material/colors';
-import { Outlet, Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, Link as RouterLink } from 'react-router-dom';
 import { useState } from 'react';
 import logo_unati_horizontal from '../assets/logo_unati_horizontal.png';
 
 export default function AppLayout() {
   const [openProfile, setOpenProfile] = useState(false);
-  const navigate = useNavigate();
-  const location = useLocation(); // 👈 pega a rota atual
-
-  // ⛳ só mostra o botão Home se a rota começar com /medicamentos
-  const isInsideMedicamentos = location.pathname.startsWith('/medicamentos');
 
   return (
     <Box sx={{ minHeight: '100dvh', bgcolor: 'background.default' }}>
-      {/* 🔷 Barra superior fixa */}
+      {/* Top App Bar fixa */}
       <AppBar
         position="fixed"
         elevation={0}
@@ -26,21 +20,9 @@ export default function AppLayout() {
           bgcolor: 'rgba(255,255,255,0.85)',
         }}
       >
-        <Toolbar sx={{ display: 'flex', alignItems: 'center' }}>
-          {/* 🔶 Logo clicável — vai pra /home */}
-          <Box
-            component="button"
-            onClick={() => navigate('/home')}
-            style={{
-              background: 'none',
-              border: 'none',
-              padding: 0,
-              margin: 0,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-            }}
-          >
+        <Toolbar>
+          {/* Logo UNATI */}
+          <Box component={RouterLink as any} to="/home" sx={{ display: 'inline-flex', alignItems: 'center', mr: 2 }}>
             <Box
               component="img"
               src={logo_unati_horizontal}
@@ -48,23 +30,9 @@ export default function AppLayout() {
               sx={{ height: 48 }}
             />
           </Box>
-
-          {/* Espaço flexível entre logo e botões */}
           <Box sx={{ flex: 1 }} />
 
-          {/* 🔹 exibe botão Home apenas se estiver no módulo Medicamentos */}
-          {isInsideMedicamentos && (
-            <Button
-              variant="outlined"
-              color="primary"
-              onClick={() => navigate('/home')}
-              sx={{ mr: 2 }}
-            >
-              🏠 Página Inicial
-            </Button>
-          )}
-
-          {/* 🔹 Área admin (sempre visível) */}
+          {/* Botão Área do administrador */}
           <Button
             variant="outlined"
             color="primary"
@@ -72,10 +40,10 @@ export default function AppLayout() {
             to="/admin"
             sx={{ mr: 2 }}
           >
-            Área do Administrador
+            Área do administrador
           </Button>
 
-          {/* 🔹 Avatar do perfil */}
+          {/* Avatar no canto direito */}
           <Avatar
             sx={{
               bgcolor: deepPurple[500],
@@ -88,15 +56,15 @@ export default function AppLayout() {
         </Toolbar>
       </AppBar>
 
-      {/* compensação AppBar fixa */}
+      {/* Espaçamento para compensar a AppBar fixa */}
       <Toolbar />
 
-      {/* conteúdo principal */}
+      {/* Conteúdo principal */}
       <Container sx={{ py: 3 }}>
         <Outlet />
       </Container>
 
-      {/* Modal de perfil */}
+      {/* Modal de Perfil */}
       <Modal open={openProfile} onClose={() => setOpenProfile(false)}>
         <Box
           onClick={(e) => e.stopPropagation()}
@@ -116,12 +84,10 @@ export default function AppLayout() {
           <Typography variant="h5" fontWeight={700} mb={2}>
             Meu Perfil
           </Typography>
-
           <Typography variant="body1" color="text.secondary">
             Aqui você poderá visualizar e editar suas informações pessoais, como nome,
             e-mail e foto de perfil.
           </Typography>
-
           <Box
             component="button"
             onClick={() => setOpenProfile(false)}
