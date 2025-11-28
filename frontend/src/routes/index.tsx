@@ -10,6 +10,7 @@ import EditCuidadorPage from '@/features/admin/pages/EditCuidadorPage';
 import AdminUsuariosPage from '@/features/admin/pages/AdminUsuariosPage';
 import AdminMedicosPage from '@/features/admin/pages/AdminMedicosPage';
 import AdminCuidadoresPage from '@/features/admin/pages/AdminCuidadoresPage';
+import AdminUsuarioCreatePage from '@/features/admin/pages/AdminUsuarioCreatePage';
 import AtendimentoMedico from '@/features/atendimento/AtendimentoMedico'; 
 
 function Home() {
@@ -38,6 +39,7 @@ export function AppRoutes() {
         {/* Rotas administrativas */}
         <Route path="admin" element={<AdminPage />} />
         <Route path="admin/usuarios" element={<AdminUsuariosPage />} />
+        <Route path="admin/usuarios/novo" element={<AdminUsuarioCreatePage />} />
         <Route path="admin/medicos" element={<AdminMedicosPage />} />
         <Route path="admin/cuidadores" element={<AdminCuidadoresPage />} />
         <Route path="admin/usuarios/:id/edit" element={<EditUsuarioPage />} />
