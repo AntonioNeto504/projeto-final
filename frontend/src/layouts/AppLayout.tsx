@@ -1,11 +1,29 @@
 import { AppBar, Avatar, Box, Container, Modal, Toolbar, Typography, Button } from '@mui/material';
 import { deepPurple } from '@mui/material/colors';
 import { Outlet, Link as RouterLink } from 'react-router-dom';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import logo_unati_horizontal from '../assets/logo_unati_horizontal.png';
 
 export default function AppLayout() {
   const [openProfile, setOpenProfile] = useState(false);
+  const userInitial = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('user');
+      if (!raw) return 'M';
+      const parsed = JSON.parse(raw);
+      const name: string | undefined = parsed?.name;
+      if (name && name.trim().length > 0) {
+        return name.trim().charAt(0).toUpperCase();
+      }
+      const username: string | undefined = parsed?.username;
+      if (username && username.trim().length > 0) {
+        return username.trim().charAt(0).toUpperCase();
+      }
+      return 'M';
+    } catch {
+      return 'M';
+    }
+  }, []);
 
   return (
     <Box sx={{ minHeight: '100dvh', bgcolor: 'background.default' }}>
@@ -51,7 +69,7 @@ export default function AppLayout() {
             }}
             onClick={() => setOpenProfile(true)}
           >
-            M
+            {userInitial}
           </Avatar>
         </Toolbar>
       </AppBar>
