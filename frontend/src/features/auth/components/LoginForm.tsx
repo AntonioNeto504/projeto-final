@@ -20,6 +20,7 @@ export default function LoginForm() {
       
       // Salvar token no interceptor HTTP
       setAuthToken(response.accessToken);
+      localStorage.setItem('token', response.accessToken);
       
       // Opcional: Salvar dados do usuário no localStorage
       localStorage.setItem('user', JSON.stringify({
@@ -30,6 +31,7 @@ export default function LoginForm() {
         roleName: response.roleName,
         roleCode: response.roleCode,
         permissions: response.permissions,
+        accessToken: response.accessToken,
       }));
       
       enqueueSnackbar(`Bem-vindo(a), ${response.name}!`, { variant: 'success' });
@@ -81,4 +83,5 @@ export default function LoginForm() {
     </Box>
   );
 }
+
 
