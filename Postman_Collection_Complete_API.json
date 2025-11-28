@@ -204,7 +204,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"name\": \"João Silva Atualizado\",\n    \"email\": \"joao.novo@email.com\"\n}"
+                            "raw": "{\n    \"name\": \"João Silva Atualizado\",\n    \"email\": \"joao.novo@email.com\",\n    \"phone\": \"62988887777\",\n    \"birthDate\": \"1991-02-20\",\n    \"doc\": \"12345678900\"\n}"
                         },
                         "url": {
                             "raw": "{{base_url}}/api/users/1",
@@ -217,7 +217,7 @@
                                 "1"
                             ]
                         },
-                        "description": "🔒 Requer: ADMIN OU editar a si mesmo\n\n⚠️ **Segurança:** Usuário só pode editar seu próprio perfil, exceto ADMIN"
+                        "description": "🔒 Requer: ADMIN OU editar a si mesmo\n\n⚠️ Usuário só pode editar seu próprio perfil, exceto ADMIN"
                     }
                 },
                 {
