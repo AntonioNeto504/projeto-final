@@ -12,7 +12,13 @@ import AdminPermissoesPage from '@/features/admin/pages/AdminPermissoesPage';
 import AdminMedicosPage from '@/features/admin/pages/AdminMedicosPage';
 import AdminCuidadoresPage from '@/features/admin/pages/AdminCuidadoresPage';
 import AdminUsuarioCreatePage from '@/features/admin/pages/AdminUsuarioCreatePage';
-import AtendimentoMedico from '@/features/atendimento/AtendimentoMedico'; 
+import AtendimentoMedico from '@/features/atendimento/AtendimentoMedico';
+import CadastroMedicamento from '@/features/medicamentos/components/CadastroMedicamento';
+import HistoricoMedicamentosPage from '@/features/medicamentos/pages/HistoricoMedicamentosPage';
+import ListaMedicamentosPage from '@/features/medicamentos/pages/ListaMedicamentosPage';
+import IncialPage from '@/features/medicamentos/pages/InicialPage';
+
+
 
 function Home() {
   return (
@@ -53,6 +59,15 @@ export function AppRoutes() {
 
         {/* Nova rota: Atendimento Médico */}
         <Route path="atendimento" element={<AtendimentoMedico />} />
+
+        {/* Rotas de Medicamentos */}
+        <Route path="medicamentos">
+          <Route index element={<IncialPage />} /> 
+          <Route path="cadastro" element={<CadastroMedicamento />} />
+          <Route path="historico" element={<HistoricoMedicamentosPage />} />
+          <Route path="listagem" element={<ListaMedicamentosPage />} />
+          <Route path="lista" element={<ListaMedicamentosPage />} />
+        </Route>
 
         {/* Rota fallback */}
         <Route path="*" element={<Navigate to="/home" replace />} />
