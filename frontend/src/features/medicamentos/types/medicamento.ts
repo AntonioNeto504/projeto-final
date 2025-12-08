@@ -1,4 +1,4 @@
-export type TarjaMedicamento = 'comum' | 'amarela' | 'vermelha' | 'preta';
+export type TarjaMedicamento = 'sem_tarja' | 'amarela' | 'vermelha' | 'preta';
 export type TipoMedicamento = 'comprimido' | 'liquido';
 
 export interface ContatoPerfil {
@@ -11,6 +11,10 @@ export interface ContatoPerfil {
 export interface Medicamento {
   id?: string;
   nome: string;
+
+  // 🔥 ADICIONADO:
+  anvisaId?: number;
+
   tipo: TipoMedicamento;
   unidadePorDose: number;
   mlPorDose: number;
@@ -18,9 +22,12 @@ export interface Medicamento {
   vezesAoDia: number;
   horarios: string[];
   tarja: TarjaMedicamento;
+
   contatoEmergenciaId?: string;
+
   dataInicio?: string;
   dataFim?: string;
   dataMedicamento?: string;
+
   checkins?: string[];
 }

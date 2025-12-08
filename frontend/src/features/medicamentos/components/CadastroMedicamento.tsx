@@ -19,26 +19,50 @@ import {
     DialogContent,
     DialogActions,
     IconButton,
+    Autocomplete,
 } from '@mui/material';
 import type { SelectChangeEvent } from '@mui/material/Select';
 import { useNavigate } from 'react-router-dom';
 import type { Medicamento, TipoMedicamento } from '../types/medicamento';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { loadContatos, createContato, updateContato, deleteContato, MAX_CONTACTS } from '../service/contatoService';
+import {
+    loadContatos,
+    createContato,
+    updateContato,
+    deleteContato,
+    MAX_CONTACTS
+} from '../service/contatoService';
 import type { Contato } from '../service/contatoService';
 
-const STORAGE_KEY = 'medmod:medicamentos';
+import { anvisaApi } from '../api/anvisaApi';
+import type { MedicamentoAnvisaDto } from '../api/anvisaApi';
+import { medicamentosApi } from "../api/medicamentosApi";
+import { getUsuarioId } from "../utils/session";
+
+
 
 interface Props {
-    onCadastrar?: (med: Medicamento) => void;
-    onAtualizar?: (med: Medicamento) => void;
     medicamentoEditar?: Medicamento | null;
 }
 
+
 /* Helpers de layout */
-const ResponsiveRow: React.FC<{ children: React.ReactNode; gap?: number | string; sx?: any }> = ({ children, gap = 2, sx }) => (
-    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap, width: '100%', alignItems: 'stretch', ...sx }}>
+const ResponsiveRow: React.FC<{ children: React.ReactNode; gap?: number | string; sx?: any }> = ({
+    children,
+    gap = 2,
+    sx
+}) => (
+    <Box
+        sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            gap,
+            width: '100%',
+            alignItems: 'stretch',
+            ...sx
+        }}
+    >
         {children}
     </Box>
 );
@@ -58,12 +82,16 @@ const selectBoxSx = {
         padding: '14px 18px',
         display: 'flex',
         alignItems: 'center',
-        fontSize: 18,
-    },
+        fontSize: 18
+    }
 };
 const selectMenuItemSx = { fontSize: 18 };
 
-const CadastroMedicamento: React.FC<Props> = ({ onCadastrar, onAtualizar, medicamentoEditar }) => {
+const CadastroMedicamento: React.FC<Props> = ({
+    medicamentoEditar
+}) => {
+
+
     const navigate = useNavigate();
 
     const [step, setStep] = useState<number>(1);
@@ -76,7 +104,7 @@ const CadastroMedicamento: React.FC<Props> = ({ onCadastrar, onAtualizar, medica
         quantidadeTotal: 0,
         vezesAoDia: 0,
         horarios: [''],
-        tarja: 'comum',
+        tarja: 'sem_tarja'
     });
 
     // contatos
@@ -85,9 +113,16 @@ const CadastroMedicamento: React.FC<Props> = ({ onCadastrar, onAtualizar, medica
     const [novoContato, setNovoContato] = useState<{ nome: string; telefone: string; relacao: string }>({
         nome: '',
         telefone: '',
-        relacao: '',
+        relacao: ''
     });
     const [editingContatoId, setEditingContatoId] = useState<string | null>(null);
+
+    // ANVISA – medicamentos
+    const [medicamentosAnvisa, setMedicamentosAnvisa] = useState<MedicamentoAnvisaDto[]>([]);
+
+    useEffect(() => {
+        anvisaApi.listar().then(setMedicamentosAnvisa);
+    }, []);
 
     useEffect(() => {
         setContatos(loadContatos());
@@ -104,7 +139,7 @@ const CadastroMedicamento: React.FC<Props> = ({ onCadastrar, onAtualizar, medica
                 horarios:
                     medicamentoEditar.horarios && medicamentoEditar.horarios.length
                         ? medicamentoEditar.horarios
-                        : Array(medicamentoEditar.vezesAoDia || 1).fill(''),
+                        : Array(medicamentoEditar.vezesAoDia || 1).fill('')
             } as Medicamento);
         } else {
             setForm({
@@ -115,7 +150,7 @@ const CadastroMedicamento: React.FC<Props> = ({ onCadastrar, onAtualizar, medica
                 quantidadeTotal: 0,
                 vezesAoDia: 0,
                 horarios: [''],
-                tarja: 'comum',
+                tarja: 'sem_tarja'
             });
         }
         setStep(1);
@@ -134,11 +169,17 @@ const CadastroMedicamento: React.FC<Props> = ({ onCadastrar, onAtualizar, medica
             if (!perDoseMl) return 0;
             return Math.ceil(total / (perDoseMl * vezes));
         }
-    }, [form.quantidadeTotal, form.vezesAoDia, form.unidadePorDose, form.mlPorDose, form.tipo]);
+    }, [
+        form.quantidadeTotal,
+        form.vezesAoDia,
+        form.unidadePorDose,
+        form.mlPorDose,
+        form.tipo
+    ]);
 
     const handleVezesChange = (v: number) => {
         const vezes = Math.max(1, Math.floor(v));
-        setForm((prev) => {
+        setForm(prev => {
             const newHorarios = [...(prev.horarios || [])];
             while (newHorarios.length < vezes) newHorarios.push('');
             while (newHorarios.length > vezes) newHorarios.pop();
@@ -146,26 +187,27 @@ const CadastroMedicamento: React.FC<Props> = ({ onCadastrar, onAtualizar, medica
         });
     };
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent) => {
+    const handleInputChange = (
+        e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent
+    ) => {
         const t = e.target as HTMLInputElement | { name?: string; value: any };
         const name = t.name ?? '';
         let value: any = (t as any).value;
         if (!name) return;
 
-        // campos numéricos
         if (name === 'quantidadeTotal' || name === 'unidadePorDose' || name === 'mlPorDose') {
             if (value === '') {
-                setForm((prev) => ({ ...prev, [name]: 0 } as any));
+                setForm(prev => ({ ...prev, [name]: 0 }));
                 return;
             }
             const n = Number(value);
-            setForm((prev) => ({ ...prev, [name]: isNaN(n) ? 0 : n } as any));
+            setForm(prev => ({ ...prev, [name]: isNaN(n) ? 0 : n }));
             return;
         }
 
         if (name === 'vezesAoDia') {
             if (value === '') {
-                setForm((prev) => ({ ...prev, vezesAoDia: 1 } as any));
+                setForm(prev => ({ ...prev, vezesAoDia: 1 }));
                 return;
             }
             const n = Number(value);
@@ -177,26 +219,28 @@ const CadastroMedicamento: React.FC<Props> = ({ onCadastrar, onAtualizar, medica
             return;
         }
 
-        // tipo
         if (name === 'tipo') {
             value = value as TipoMedicamento;
             if (value === 'comprimido') {
-                setForm((prev) => ({ ...prev, tipo: 'comprimido', unidadePorDose: 1, mlPorDose: 0 } as any));
+                setForm(prev => ({ ...prev, tipo: 'comprimido', unidadePorDose: 1, mlPorDose: 0 }));
                 return;
             } else {
-                setForm((prev) => ({ ...prev, tipo: 'liquido', mlPorDose: 0, unidadePorDose: 0 } as any));
+                setForm(prev => ({ ...prev, tipo: 'liquido', mlPorDose: 0, unidadePorDose: 0 }));
                 return;
             }
         }
 
-        // tarja: ao setar 'preta' tentamos vincular automaticamente ao primeiro contato; se não houver, abrimos diálogo
         if (name === 'tarja') {
-            setForm((prev) => ({ ...prev, tarja: value } as any));
+            setForm(prev => ({ ...prev, tarja: value }));
             if (value === 'preta') {
                 const cts = loadContatos();
                 setContatos(cts);
                 if (cts.length > 0) {
-                    setForm((prev) => ({ ...prev, tarja: 'preta', contatoEmergenciaId: cts[0].id } as any));
+                    setForm(prev => ({
+                        ...prev,
+                        tarja: 'preta',
+                        contatoEmergenciaId: cts[0].id
+                    }));
                 } else {
                     setNovoContato({ nome: '', telefone: '', relacao: '' });
                     setEditingContatoId(null);
@@ -206,12 +250,11 @@ const CadastroMedicamento: React.FC<Props> = ({ onCadastrar, onAtualizar, medica
             return;
         }
 
-        // contatoEmergenciaId: '' = não vincular, 'new' = abrir diálogo, id = vincular
         if (name === 'contatoEmergenciaId') {
             if (value === '') {
-                setForm((prev) => {
+                setForm(prev => {
                     const { contatoEmergenciaId, ...rest } = prev as any;
-                    return rest as Medicamento;
+                    return rest;
                 });
                 return;
             }
@@ -225,15 +268,15 @@ const CadastroMedicamento: React.FC<Props> = ({ onCadastrar, onAtualizar, medica
                 setOpenContatoDialog(true);
                 return;
             }
-            setForm((prev) => ({ ...prev, contatoEmergenciaId: String(value) } as any));
+            setForm(prev => ({ ...prev, contatoEmergenciaId: String(value) }));
             return;
         }
 
-        setForm((prev) => ({ ...prev, [name]: value } as any));
+        setForm(prev => ({ ...prev, [name]: value }));
     };
 
     const handleHorarioChange = (index: number, value: string) => {
-        setForm((prev) => {
+        setForm(prev => {
             const h = [...(prev.horarios || [])];
             h[index] = value;
             return { ...prev, horarios: h } as Medicamento;
@@ -250,60 +293,83 @@ const CadastroMedicamento: React.FC<Props> = ({ onCadastrar, onAtualizar, medica
     };
 
     const validateStep2 = () => {
-        if ((form.horarios || []).some((h) => !h || h.trim() === '')) return false;
+        if ((form.horarios || []).some(h => !h || h.trim() === '')) return false;
         return true;
     };
+    
+    function montarPayload() {
+    const horarios = form.horarios.map(h => ({ hora: h }));
 
-    const handleSubmit = (e?: FormEvent) => {
-        if (e) e.preventDefault();
-        if (!validateStep1()) {
-            alert('Preencha corretamente a primeira etapa.');
-            setStep(1);
-            return;
-        }
-        if (!validateStep2()) {
-            alert('Preencha corretamente os horários.');
-            setStep(2);
-            return;
-        }
+    const tarja = form.tarja
+        ? form.tarja.toUpperCase()
+        : "SEM_TARJA";
 
-        const medToSave: Medicamento = {
-            ...form,
-            quantidadeTotal: Number(form.quantidadeTotal ?? 0),
-            vezesAoDia: Number(form.vezesAoDia ?? 1),
-            horarios: form.horarios || Array(form.vezesAoDia || 1).fill(''),
+    if (form.tipo === "liquido") {
+        return {
+            totalFrasco: form.quantidadeTotal,
+            doseDiaria: form.mlPorDose,
+            tipoDosagem: "ml",
+            tarja,
+            horarios
         };
+    }
 
-        try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            const list = raw ? (JSON.parse(raw) as Medicamento[]) : [];
-            if (medToSave.id) {
-                const idx = list.findIndex((m) => m.id === medToSave.id);
-                if (idx >= 0) list[idx] = medToSave;
-                else list.push(medToSave);
-            } else {
-                medToSave.id = String(Date.now());
-                list.push(medToSave);
-            }
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-        } catch {
-            // ignore
-        }
-
-        if (medicamentoEditar?.id) onAtualizar?.(medToSave);
-        else onCadastrar?.(medToSave);
-
-        navigate('/medicamentos/lista');
+    return {
+        quantidadeCartela: form.quantidadeTotal,
+        doseDiaria: form.unidadePorDose,
+        tipoDosagem: "mg",
+        tarja,
+        horarios
     };
+}
+
+    const handleSubmit = async (e?: FormEvent) => {
+    if (e) e.preventDefault();
+
+    if (!validateStep1()) {
+        alert("Preencha corretamente a primeira etapa.");
+        setStep(1);
+        return;
+    }
+
+    if (!validateStep2()) {
+        alert("Preencha corretamente os horários.");
+        setStep(2);
+        return;
+    }
+
+    const usuarioId = getUsuarioId();
+    if (!usuarioId) {
+        alert("Erro: usuário não identificado. Faça login novamente.");
+        return;
+    }
+
+    if (!form.anvisaId) {
+        alert("Selecione um medicamento da lista da ANVISA.");
+        return;
+    }
+
+    const payload = montarPayload();
+
+    try {
+        await medicamentosApi.criar(usuarioId, form.anvisaId, payload);
+        alert("Medicamento cadastrado com sucesso!");
+        navigate("/medicamentos/lista");
+    } catch (err) {
+        console.error(err);
+        alert("Erro ao cadastrar o medicamento.");
+    }
+};
+
+
 
     const quantidadePorHorario = useMemo(() => {
         if (form.tipo === 'comprimido') return Number(form.unidadePorDose ?? 0);
         return +(Number(form.mlPorDose ?? 0)).toFixed(2);
     }, [form.tipo, form.unidadePorDose, form.mlPorDose]);
 
-    // contatos handlers
     const abrirEdicaoContato = (contatoId: string) => {
-        const c = contatos.find((x) => x.id === contatoId);
+        const c = contatos.find(x => x.id === contatoId);
         if (!c) return;
         setNovoContato({ nome: c.nome, telefone: c.telefone, relacao: c.relacao ?? '' });
         setEditingContatoId(contatoId);
@@ -320,9 +386,9 @@ const CadastroMedicamento: React.FC<Props> = ({ onCadastrar, onAtualizar, medica
         }
         setContatos(loadContatos());
         if (form.contatoEmergenciaId === contatoId) {
-            setForm((prev) => {
+            setForm(prev => {
                 const { contatoEmergenciaId, ...rest } = prev as any;
-                return rest as Medicamento;
+                return rest;
             });
         }
     };
@@ -337,7 +403,7 @@ const CadastroMedicamento: React.FC<Props> = ({ onCadastrar, onAtualizar, medica
             const updated = updateContato(editingContatoId, {
                 nome: novoContato.nome.trim(),
                 telefone: novoContato.telefone.trim(),
-                relacao: novoContato.relacao.trim(),
+                relacao: novoContato.relacao.trim()
             });
             if (!updated) {
                 alert('Erro ao atualizar contato.');
@@ -346,7 +412,7 @@ const CadastroMedicamento: React.FC<Props> = ({ onCadastrar, onAtualizar, medica
                 setContatos(loadContatos());
                 return;
             }
-            setContatos((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+            setContatos(prev => prev.map(p => (p.id === updated.id ? updated : p)));
             setOpenContatoDialog(false);
             setEditingContatoId(null);
             return;
@@ -355,7 +421,7 @@ const CadastroMedicamento: React.FC<Props> = ({ onCadastrar, onAtualizar, medica
         const created = createContato({
             nome: novoContato.nome.trim(),
             telefone: novoContato.telefone.trim(),
-            relacao: novoContato.relacao.trim(),
+            relacao: novoContato.relacao.trim()
         });
 
         if (!created) {
@@ -365,40 +431,82 @@ const CadastroMedicamento: React.FC<Props> = ({ onCadastrar, onAtualizar, medica
             return;
         }
 
-        setContatos((prev) => [...prev, created]);
-        setForm((prev) => ({ ...prev, contatoEmergenciaId: created.id } as any));
+        setContatos(prev => [...prev, created]);
+        setForm(prev => ({ ...prev, contatoEmergenciaId: created.id }));
         setOpenContatoDialog(false);
         setEditingContatoId(null);
     };
 
     return (
-        <Box sx={{ minHeight: 'calc(100vh - 64px)', display: 'flex', alignItems: 'center', justifyContent: 'center', py: 4, px: 2 }}>
+        <Box
+            sx={{
+                minHeight: 'calc(100vh - 64px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                py: 4,
+                px: 2
+            }}
+        >
             <Card sx={{ width: '100%', maxWidth: 860, borderRadius: 3, boxShadow: 4 }}>
                 <CardContent sx={{ p: { xs: 3, sm: 5 } }}>
-                    <Typography variant="h4" align="center" color="primary" fontWeight={800} gutterBottom sx={{ fontSize: { xs: 22, sm: 26 } }}>
+                    <Typography
+                        variant="h4"
+                        align="center"
+                        color="primary"
+                        fontWeight={800}
+                        gutterBottom
+                        sx={{ fontSize: { xs: 22, sm: 26 } }}
+                    >
                         {form.id ? 'Editar Medicamento' : 'Cadastro do Medicamento'}
                     </Typography>
 
                     <form onSubmit={handleSubmit} noValidate>
                         {step === 1 && (
                             <Stack spacing={3} sx={{ mt: 1 }}>
-                                <TextField
-                                    label="Nome do Medicamento"
-                                    name="nome"
-                                    value={form.nome}
-                                    onChange={handleInputChange}
-                                    required
-                                    fullWidth
-                                    size="small"
-                                    margin="dense"
-                                    InputLabelProps={{ sx: labelStyle }}
-                                    InputProps={{ inputProps: { style: { fontSize: 20, padding: '14px 12px' } } }}
+                                
+                                {/* AUTOCOMPLETE ANVISA */}
+                                <Autocomplete
+                                    options={medicamentosAnvisa}
+                                    getOptionLabel={(opt) => opt.nomeProduto}
+                                    onChange={(_, selected) => {
+                                        if (selected) {
+                                            setForm(prev => ({
+                                                ...prev,
+                                                nome: selected.nomeProduto,
+                                                anvisaId: selected.id
+                                            }));
+                                        }
+                                    }}
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Nome do Medicamento"
+                                            required
+                                            fullWidth
+                                            size="small"
+                                            margin="dense"
+                                            InputLabelProps={{ sx: labelStyle }}
+                                            InputProps={{
+                                                ...params.InputProps,
+                                                inputProps: {
+                                                    ...params.inputProps,
+                                                    style: {
+                                                        fontSize: 20,
+                                                        padding: '14px 12px'
+                                                    }
+                                                }
+                                            }}
+                                        />
+                                    )}
                                 />
 
                                 <ResponsiveRow gap={2}>
                                     <Col flex={1}>
                                         <FormControl fullWidth size="small" margin="dense">
-                                            <InputLabel id="tipo-label" sx={labelStyle}>Tipo</InputLabel>
+                                            <InputLabel id="tipo-label" sx={labelStyle}>
+                                                Tipo
+                                            </InputLabel>
                                             <Select
                                                 labelId="tipo-label"
                                                 name="tipo"
@@ -406,8 +514,12 @@ const CadastroMedicamento: React.FC<Props> = ({ onCadastrar, onAtualizar, medica
                                                 onChange={handleInputChange as any}
                                                 sx={selectBoxSx}
                                             >
-                                                <MenuItem value="comprimido" sx={selectMenuItemSx}>Comprimido</MenuItem>
-                                                <MenuItem value="liquido" sx={selectMenuItemSx}>Solução (Líquido)</MenuItem>
+                                                <MenuItem value="comprimido" sx={selectMenuItemSx}>
+                                                    Comprimido
+                                                </MenuItem>
+                                                <MenuItem value="liquido" sx={selectMenuItemSx}>
+                                                    Solução (Líquido)
+                                                </MenuItem>
                                             </Select>
                                         </FormControl>
                                     </Col>
@@ -419,14 +531,25 @@ const CadastroMedicamento: React.FC<Props> = ({ onCadastrar, onAtualizar, medica
                                                 name="unidadePorDose"
                                                 type="number"
                                                 inputProps={{ min: 1 }}
-                                                value={form.unidadePorDose === 0 ? '' : String(form.unidadePorDose)}
+                                                value={
+                                                    form.unidadePorDose === 0
+                                                        ? ''
+                                                        : String(form.unidadePorDose)
+                                                }
                                                 onChange={handleInputChange}
                                                 required
                                                 fullWidth
                                                 size="small"
                                                 margin="dense"
                                                 InputLabelProps={{ sx: labelStyle }}
-                                                InputProps={{ inputProps: { style: { fontSize: 20, padding: '12px 12px' } } }}
+                                                InputProps={{
+                                                    inputProps: {
+                                                        style: {
+                                                            fontSize: 20,
+                                                            padding: '12px 12px'
+                                                        }
+                                                    }
+                                                }}
                                             />
                                         ) : (
                                             <TextField
@@ -434,14 +557,25 @@ const CadastroMedicamento: React.FC<Props> = ({ onCadastrar, onAtualizar, medica
                                                 name="mlPorDose"
                                                 type="number"
                                                 inputProps={{ min: 0.1, step: 0.1 }}
-                                                value={form.mlPorDose === 0 ? '' : String(form.mlPorDose)}
+                                                value={
+                                                    form.mlPorDose === 0
+                                                        ? ''
+                                                        : String(form.mlPorDose)
+                                                }
                                                 onChange={handleInputChange}
                                                 required
                                                 fullWidth
                                                 size="small"
                                                 margin="dense"
                                                 InputLabelProps={{ sx: labelStyle }}
-                                                InputProps={{ inputProps: { style: { fontSize: 20, padding: '12px 12px' } } }}
+                                                InputProps={{
+                                                    inputProps: {
+                                                        style: {
+                                                            fontSize: 20,
+                                                            padding: '12px 12px'
+                                                        }
+                                                    }
+                                                }}
                                             />
                                         )}
                                     </Col>
@@ -450,10 +584,18 @@ const CadastroMedicamento: React.FC<Props> = ({ onCadastrar, onAtualizar, medica
                                 <ResponsiveRow gap={2}>
                                     <Col flex={1.4}>
                                         <TextField
-                                            label={form.tipo === 'liquido' ? 'Total (ml) - quantidade total do frasco' : 'Total (comprimidos) - quantidade total'}
+                                            label={
+                                                form.tipo === 'liquido'
+                                                    ? 'Total (ml) - quantidade total do frasco'
+                                                    : 'Total (comprimidos) - quantidade total'
+                                            }
                                             name="quantidadeTotal"
                                             type="number"
-                                            value={form.quantidadeTotal === 0 ? '' : String(form.quantidadeTotal)}
+                                            value={
+                                                form.quantidadeTotal === 0
+                                                    ? ''
+                                                    : String(form.quantidadeTotal)
+                                            }
                                             onChange={handleInputChange}
                                             required
                                             fullWidth
@@ -469,7 +611,11 @@ const CadastroMedicamento: React.FC<Props> = ({ onCadastrar, onAtualizar, medica
                                             name="vezesAoDia"
                                             type="number"
                                             inputProps={{ min: 1 }}
-                                            value={form.vezesAoDia === 0 ? '' : String(form.vezesAoDia)}
+                                            value={
+                                                form.vezesAoDia === 0
+                                                    ? ''
+                                                    : String(form.vezesAoDia)
+                                            }
                                             onChange={handleInputChange}
                                             required
                                             fullWidth
@@ -480,8 +626,17 @@ const CadastroMedicamento: React.FC<Props> = ({ onCadastrar, onAtualizar, medica
                                     </Col>
                                 </ResponsiveRow>
 
-                                <Typography variant="body1" color="text.secondary" sx={{ mt: 1, fontSize: 18 }}>
-                                    Duração estimada: <strong style={{ fontSize: 18 }}>{diasEstimados > 0 ? `${diasEstimados} dia(s)` : '—'}</strong>
+                                <Typography
+                                    variant="body1"
+                                    color="text.secondary"
+                                    sx={{ mt: 1, fontSize: 18 }}
+                                >
+                                    Duração estimada:{' '}
+                                    <strong style={{ fontSize: 18 }}>
+                                        {diasEstimados > 0
+                                            ? `${diasEstimados} dia(s)`
+                                            : '—'}
+                                    </strong>
                                 </Typography>
 
                                 <Box
@@ -497,7 +652,11 @@ const CadastroMedicamento: React.FC<Props> = ({ onCadastrar, onAtualizar, medica
                                         variant="outlined"
                                         onClick={() => navigate('/medicamentos/lista')}
                                         size="large"
-                                        sx={{ maxWidth: { sm: 180 }, fontSize: 18, minHeight: 52 }}
+                                        sx={{
+                                            maxWidth: { sm: 180 },
+                                            fontSize: 18,
+                                            minHeight: 52
+                                        }}
                                     >
                                         ← Voltar
                                     </Button>
@@ -506,44 +665,87 @@ const CadastroMedicamento: React.FC<Props> = ({ onCadastrar, onAtualizar, medica
                                         variant="contained"
                                         onClick={() => {
                                             if (!validateStep1()) {
-                                                alert('Preencha todos os campos obrigatórios da etapa 1.');
+                                                alert(
+                                                    'Preencha todos os campos obrigatórios da etapa 1.'
+                                                );
                                                 return;
                                             }
                                             setStep(2);
                                         }}
                                         size="large"
-                                        sx={{ maxWidth: { sm: 320 }, fontSize: 18, minHeight: 56 }}
+                                        sx={{
+                                            maxWidth: { sm: 320 },
+                                            fontSize: 18,
+                                            minHeight: 56
+                                        }}
                                     >
                                         Próxima etapa →
                                     </Button>
                                 </Box>
-
                             </Stack>
                         )}
 
                         {step === 2 && (
                             <Stack spacing={3} sx={{ mt: 1 }}>
-                                <Typography variant="h5" sx={{ fontSize: 20, fontWeight: 700 }}>Detalhes e Horários</Typography>
+                                <Typography
+                                    variant="h5"
+                                    sx={{ fontSize: 20, fontWeight: 700 }}
+                                >
+                                    Detalhes e Horários
+                                </Typography>
 
                                 <Typography sx={{ fontSize: 18, color: 'text.secondary' }}>
-                                    Período estimado: <strong style={{ fontSize: 18 }}>{diasEstimados > 0 ? `${diasEstimados} dia(s)` : '—'}</strong>
+                                    Período estimado:{' '}
+                                    <strong style={{ fontSize: 18 }}>
+                                        {diasEstimados > 0
+                                            ? `${diasEstimados} dia(s)`
+                                            : '—'}
+                                    </strong>
                                 </Typography>
 
                                 <Divider />
 
-                                <Typography variant="subtitle1" sx={{ mt: 1, fontSize: 18 }}>Horários (preencha todos) — lista rolável</Typography>
+                                <Typography
+                                    variant="subtitle1"
+                                    sx={{ mt: 1, fontSize: 18 }}
+                                >
+                                    Horários (preencha todos) — lista rolável
+                                </Typography>
 
-                                <Box sx={{ maxHeight: 300, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2, py: 1 }}>
-                                    {Array.from({ length: form.vezesAoDia || 1 }).map((_, idx) => (
+                                <Box
+                                    sx={{
+                                        maxHeight: 300,
+                                        overflowY: 'auto',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: 2,
+                                        py: 1
+                                    }}
+                                >
+                                    {Array.from({
+                                        length: form.vezesAoDia || 1
+                                    }).map((_, idx) => (
                                         <Box key={idx} sx={{ borderRadius: 2 }}>
                                             <ResponsiveRow gap={2}>
                                                 <Col>
                                                     <TextField
                                                         label={`Horário ${idx + 1}`}
                                                         type="time"
-                                                        value={(form.horarios && form.horarios[idx]) ?? ''}
-                                                        onChange={(e) => handleHorarioChange(idx, e.target.value)}
-                                                        InputLabelProps={{ shrink: true, sx: labelStyle }}
+                                                        value={
+                                                            (form.horarios &&
+                                                                form.horarios[idx]) ??
+                                                            ''
+                                                        }
+                                                        onChange={(e) =>
+                                                            handleHorarioChange(
+                                                                idx,
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                        InputLabelProps={{
+                                                            shrink: true,
+                                                            sx: labelStyle
+                                                        }}
                                                         fullWidth
                                                         required
                                                         size="small"
@@ -552,8 +754,19 @@ const CadastroMedicamento: React.FC<Props> = ({ onCadastrar, onAtualizar, medica
                                                 </Col>
 
                                                 <Col>
-                                                    <Typography variant="body1" color="text.secondary" sx={{ fontSize: 18 }}>
-                                                        Quantidade estimada por horário: <strong style={{ fontSize: 18 }}>{quantidadePorHorario}</strong> {form.tipo === 'liquido' ? 'ml' : 'unidades'}
+                                                    <Typography
+                                                        variant="body1"
+                                                        color="text.secondary"
+                                                        sx={{ fontSize: 18 }}
+                                                    >
+                                                        Quantidade estimada por
+                                                        horário:{' '}
+                                                        <strong style={{ fontSize: 18 }}>
+                                                            {quantidadePorHorario}
+                                                        </strong>{' '}
+                                                        {form.tipo === 'liquido'
+                                                            ? 'ml'
+                                                            : 'unidades'}
                                                     </Typography>
                                                 </Col>
                                             </ResponsiveRow>
@@ -563,84 +776,201 @@ const CadastroMedicamento: React.FC<Props> = ({ onCadastrar, onAtualizar, medica
 
                                 <Divider />
 
-                                <ResponsiveRow gap={2} sx={{ alignItems: 'center', mb: 2 }}>
-                                    <Box sx={{ flex: 1, pr: { xs: 0, sm: 2 } }}>
-                                        <Typography sx={{ fontSize: 16, fontWeight: 600, mb: 1 }}>Tarja</Typography>
+                                <ResponsiveRow
+                                    gap={2}
+                                    sx={{ alignItems: 'center', mb: 2 }}
+                                >
+                                    <Box
+                                        sx={{
+                                            flex: 1,
+                                            pr: { xs: 0, sm: 2 }
+                                        }}
+                                    >
+                                        <Typography
+                                            sx={{
+                                                fontSize: 16,
+                                                fontWeight: 600,
+                                                mb: 1
+                                            }}
+                                        >
+                                            Tarja
+                                        </Typography>
 
-                                        <FormControl fullWidth size="small" margin="dense" sx={{ ...selectBoxSx }}>
+                                        <FormControl
+                                            fullWidth
+                                            size="small"
+                                            margin="dense"
+                                            sx={{ ...selectBoxSx }}
+                                        >
                                             <Select
                                                 labelId="tarja-label"
                                                 name="tarja"
                                                 value={form.tarja}
                                                 onChange={handleInputChange as any}
-                                                sx={{ '& .MuiSelect-select': { fontSize: 18 } }}
+                                                sx={{
+                                                    '& .MuiSelect-select': {
+                                                        fontSize: 18
+                                                    }
+                                                }}
                                             >
-                                                <MenuItem value="comum" sx={selectMenuItemSx}>Comum</MenuItem>
-                                                <MenuItem value="amarela" sx={selectMenuItemSx}>Amarela</MenuItem>
-                                                <MenuItem value="vermelha" sx={selectMenuItemSx}>Vermelha</MenuItem>
-                                                <MenuItem value="preta" sx={selectMenuItemSx}>Preta</MenuItem>
+                                                <MenuItem
+                                                    value="sem_tarja"
+                                                    sx={selectMenuItemSx}
+                                                >
+                                                    Comum
+                                                </MenuItem>
+                                                <MenuItem
+                                                    value="amarela"
+                                                    sx={selectMenuItemSx}
+                                                >
+                                                    Amarela
+                                                </MenuItem>
+                                                <MenuItem
+                                                    value="vermelha"
+                                                    sx={selectMenuItemSx}
+                                                >
+                                                    Vermelha
+                                                </MenuItem>
+                                                <MenuItem
+                                                    value="preta"
+                                                    sx={selectMenuItemSx}
+                                                >
+                                                    Preta
+                                                </MenuItem>
                                             </Select>
                                         </FormControl>
                                     </Box>
 
-                                    <Box sx={{ flex: 1, pl: { xs: 0, sm: 2 }, display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                                        <Typography sx={{ fontSize: 16, fontWeight: 600, mb: 1, textAlign: { xs: 'left', sm: 'right' } }}>
+                                    <Box
+                                        sx={{
+                                            flex: 1,
+                                            pl: { xs: 0, sm: 2 },
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'flex-end'
+                                        }}
+                                    >
+                                        <Typography
+                                            sx={{
+                                                fontSize: 16,
+                                                fontWeight: 600,
+                                                mb: 1,
+                                                textAlign: {
+                                                    xs: 'left',
+                                                    sm: 'right'
+                                                }
+                                            }}
+                                        >
                                             Deseja vincular contato de emergência?
                                         </Typography>
 
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                            <FormControl fullWidth size="small" margin="dense" sx={{ ...selectBoxSx }}>
+                                        <Box
+                                            sx={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 2
+                                            }}
+                                        >
+                                            <FormControl
+                                                fullWidth
+                                                size="small"
+                                                margin="dense"
+                                                sx={{ ...selectBoxSx }}
+                                            >
                                                 <Select
                                                     labelId="contato-emergencia-label"
                                                     name="contatoEmergenciaId"
-                                                    value={form.contatoEmergenciaId ?? ''}
-                                                    onChange={handleInputChange as any}
+                                                    value={
+                                                        form.contatoEmergenciaId ??
+                                                        ''
+                                                    }
+                                                    onChange={
+                                                        handleInputChange as any
+                                                    }
                                                     displayEmpty
                                                     renderValue={(selected) => {
                                                         if (!selected)
-                                                            return <span style={{ color: '#555', fontSize: 18 }}>Não vincular</span>;
+                                                            return (
+                                                                <span
+                                                                    style={{
+                                                                        color: '#555',
+                                                                        fontSize: 18
+                                                                    }}
+                                                                >
+                                                                    Não vincular
+                                                                </span>
+                                                            );
 
-                                                        const c = contatos.find((x) => x.id === selected);
-                                                        return c ? `${c.nome} — ${c.telefone}` : String(selected);
+                                                        const c = contatos.find(
+                                                            (x) =>
+                                                                x.id === selected
+                                                        );
+                                                        return c
+                                                            ? `${c.nome} — ${c.telefone}`
+                                                            : String(selected);
                                                     }}
-                                                    sx={{ '& .MuiSelect-select': { fontSize: 18 } }}
+                                                    sx={{
+                                                        '& .MuiSelect-select': {
+                                                            fontSize: 18
+                                                        }
+                                                    }}
                                                 >
                                                     <MenuItem value="">
-                                                        <em style={{ fontSize: 18 }}>Não vincular</em>
+                                                        <em
+                                                            style={{
+                                                                fontSize: 18
+                                                            }}
+                                                        >
+                                                            Não vincular
+                                                        </em>
                                                     </MenuItem>
 
                                                     {contatos.map((c) => (
-                                                        <MenuItem key={c.id} value={c.id} sx={{ fontSize: 18 }}>
-                                                            {c.nome} — {c.telefone} ({c.relacao ?? '—'})
+                                                        <MenuItem
+                                                            key={c.id}
+                                                            value={c.id}
+                                                            sx={{ fontSize: 18 }}
+                                                        >
+                                                            {c.nome} — {c.telefone} (
+                                                            {c.relacao ?? '—'})
                                                         </MenuItem>
                                                     ))}
 
                                                     <MenuItem
                                                         value="new"
                                                         sx={{ fontSize: 18 }}
-                                                        disabled={contatos.length >= MAX_CONTACTS}
+                                                        disabled={
+                                                            contatos.length >=
+                                                            MAX_CONTACTS
+                                                        }
                                                     >
-                                                        {contatos.length >= MAX_CONTACTS
+                                                        {contatos.length >=
+                                                        MAX_CONTACTS
                                                             ? `Limite atingido (${contatos.length}/${MAX_CONTACTS})`
                                                             : '➕ Cadastrar novo contato'}
                                                     </MenuItem>
                                                 </Select>
                                             </FormControl>
 
-                                            {/* ============================
-        SELETOR DE AÇÃO: 
-        - Se não há contato selecionado: mostra "Cadastrar"
-        - Se há contato selecionado: mostra ícones
-       ============================ */}
-                                            {(!form.contatoEmergenciaId || form.contatoEmergenciaId === '') ? (
+                                            {!form.contatoEmergenciaId ||
+                                            form.contatoEmergenciaId === '' ? (
                                                 <Button
                                                     variant="outlined"
                                                     onClick={() => {
-                                                        if (contatos.length >= MAX_CONTACTS) {
-                                                            alert(`Limite de ${MAX_CONTACTS} contatos atingido.`);
+                                                        if (
+                                                            contatos.length >=
+                                                            MAX_CONTACTS
+                                                        ) {
+                                                            alert(
+                                                                `Limite de ${MAX_CONTACTS} contatos atingido.`
+                                                            );
                                                             return;
                                                         }
-                                                        setNovoContato({ nome: '', telefone: '', relacao: '' });
+                                                        setNovoContato({
+                                                            nome: '',
+                                                            telefone: '',
+                                                            relacao: ''
+                                                        });
                                                         setEditingContatoId(null);
                                                         setOpenContatoDialog(true);
                                                     }}
@@ -656,19 +986,40 @@ const CadastroMedicamento: React.FC<Props> = ({ onCadastrar, onAtualizar, medica
                                                     Cadastrar
                                                 </Button>
                                             ) : (
-                                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                                <Box
+                                                    sx={{
+                                                        display: 'flex',
+                                                        gap: 1
+                                                    }}
+                                                >
                                                     <IconButton
                                                         aria-label="editar contato"
-                                                        onClick={() => abrirEdicaoContato(String(form.contatoEmergenciaId))}
-                                                        sx={{ borderRadius: 20 }}
+                                                        onClick={() =>
+                                                            abrirEdicaoContato(
+                                                                String(
+                                                                    form.contatoEmergenciaId
+                                                                )
+                                                            )
+                                                        }
+                                                        sx={{
+                                                            borderRadius: 20
+                                                        }}
                                                     >
                                                         <EditIcon />
                                                     </IconButton>
 
                                                     <IconButton
                                                         aria-label="excluir contato"
-                                                        onClick={() => handleDeleteContact(String(form.contatoEmergenciaId))}
-                                                        sx={{ borderRadius: 20 }}
+                                                        onClick={() =>
+                                                            handleDeleteContact(
+                                                                String(
+                                                                    form.contatoEmergenciaId
+                                                                )
+                                                            )
+                                                        }
+                                                        sx={{
+                                                            borderRadius: 20
+                                                        }}
                                                     >
                                                         <DeleteIcon />
                                                     </IconButton>
@@ -676,65 +1027,140 @@ const CadastroMedicamento: React.FC<Props> = ({ onCadastrar, onAtualizar, medica
                                             )}
                                         </Box>
                                     </Box>
-                                    
-                                    
                                 </ResponsiveRow>
 
                                 <Divider />
 
-                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
-                                    <Button variant="outlined" onClick={() => setStep(1)} sx={{ maxWidth: { sm: 180 }, fontSize: 18, minHeight: 52 }}>
+                                <Box
+                                    sx={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        gap: 2
+                                    }}
+                                >
+                                    <Button
+                                        variant="outlined"
+                                        onClick={() => setStep(1)}
+                                        sx={{
+                                            maxWidth: { sm: 180 },
+                                            fontSize: 18,
+                                            minHeight: 52
+                                        }}
+                                    >
                                         ← Voltar
                                     </Button>
 
-                                    <Button variant="contained" onClick={() => { if (!validateStep2()) { alert('Preencha corretamente os horários.'); return; } handleSubmit(); }} sx={{ maxWidth: { sm: 320 }, fontSize: 18, minHeight: 56 }}>
+                                    <Button
+                                        variant="contained"
+                                        onClick={() => {
+                                            if (!validateStep2()) {
+                                                alert(
+                                                    'Preencha corretamente os horários.'
+                                                );
+                                                return;
+                                            }
+                                            handleSubmit();
+                                        }}
+                                        sx={{
+                                            maxWidth: { sm: 320 },
+                                            fontSize: 18,
+                                            minHeight: 56
+                                        }}
+                                    >
                                         Concluir Cadastro
                                     </Button>
                                 </Box>
                             </Stack>
                         )}
                     </form>
-
                 </CardContent>
             </Card>
 
-            {/* Dialog para cadastrar/editar novo contato */}
-            <Dialog open={openContatoDialog} onClose={() => { setOpenContatoDialog(false); setEditingContatoId(null); }} fullWidth maxWidth="sm">
-                <DialogTitle sx={{ fontSize: 20 }}>{editingContatoId ? 'Editar contato de emergência' : 'Cadastrar contato de emergência'}</DialogTitle>
+            <Dialog
+                open={openContatoDialog}
+                onClose={() => {
+                    setOpenContatoDialog(false);
+                    setEditingContatoId(null);
+                }}
+                fullWidth
+                maxWidth="sm"
+            >
+                <DialogTitle sx={{ fontSize: 20 }}>
+                    {editingContatoId
+                        ? 'Editar contato de emergência'
+                        : 'Cadastrar contato de emergência'}
+                </DialogTitle>
+
                 <DialogContent>
                     <Stack spacing={2} sx={{ mt: 1 }}>
                         <TextField
                             label="Nome"
                             value={novoContato.nome}
-                            onChange={(e) => setNovoContato((s) => ({ ...s, nome: e.target.value }))}
+                            onChange={(e) =>
+                                setNovoContato((s) => ({
+                                    ...s,
+                                    nome: e.target.value
+                                }))
+                            }
                             fullWidth
                             size="small"
-                            InputProps={{ style: { fontSize: 18 } }}
+                            InputProps={{
+                                style: { fontSize: 18 }
+                            }}
                         />
+
                         <TextField
                             label="Telefone"
                             value={novoContato.telefone}
-                            onChange={(e) => setNovoContato((s) => ({ ...s, telefone: e.target.value }))}
+                            onChange={(e) =>
+                                setNovoContato((s) => ({
+                                    ...s,
+                                    telefone: e.target.value
+                                }))
+                            }
                             fullWidth
                             size="small"
-                            InputProps={{ style: { fontSize: 18 } }}
+                            InputProps={{
+                                style: { fontSize: 18 }
+                            }}
                         />
+
                         <TextField
                             label="Relação (ex.: Filho)"
                             value={novoContato.relacao}
-                            onChange={(e) => setNovoContato((s) => ({ ...s, relacao: e.target.value }))}
+                            onChange={(e) =>
+                                setNovoContato((s) => ({
+                                    ...s,
+                                    relacao: e.target.value
+                                }))
+                            }
                             fullWidth
                             size="small"
-                            InputProps={{ style: { fontSize: 18 } }}
+                            InputProps={{
+                                style: { fontSize: 18 }
+                            }}
                         />
                     </Stack>
                 </DialogContent>
+
                 <DialogActions sx={{ px: 3, py: 2 }}>
-                    <Button onClick={() => { setOpenContatoDialog(false); setEditingContatoId(null); }} variant="outlined" sx={{ fontSize: 16 }}>
+                    <Button
+                        onClick={() => {
+                            setOpenContatoDialog(false);
+                            setEditingContatoId(null);
+                        }}
+                        variant="outlined"
+                        sx={{ fontSize: 16 }}
+                    >
                         Cancelar
                     </Button>
 
-                    <Button variant="contained" onClick={handleSaveNewContact} sx={{ fontSize: 16 }}>
+                    <Button
+                        variant="contained"
+                        onClick={handleSaveNewContact}
+                        sx={{ fontSize: 16 }}
+                    >
                         Salvar contato
                     </Button>
                 </DialogActions>
