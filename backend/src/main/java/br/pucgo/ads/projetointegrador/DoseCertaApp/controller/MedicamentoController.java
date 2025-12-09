@@ -33,6 +33,10 @@ public class MedicamentoController {
     public ResponseEntity<MedicamentoResponseDTO> detalhar(@PathVariable Long id) {
         return ResponseEntity.ok(service.detalharMedicamento(id));
     }
+    @GetMapping("/usuario/{usuarioId}/detalhes")
+    public ResponseEntity<List<MedicamentoResponseDTO>> listarPorUsuarioDetalhado(@PathVariable Long usuarioId) {
+        return ResponseEntity.ok(service.listarPorUsuarioComDetalhes(usuarioId));
+    }
 
     @PostMapping
     public ResponseEntity<Medicamento> criar(

@@ -81,6 +81,37 @@ public class RegistroTomadaService {
 
         return registroRepository.save(registro);
     }
+    @Transactional
+    public void registrarTomadaDireto(Long horarioId) {
+
+        // Buscar o horário
+        MedicamentoHorario horario = horarioRepository.findById(horarioId)
+                .orElseThrow(() -> new EntityNotFoundException("Horário não encontrado!"));
+
+        Medicamento medicamento = horario.getMedicamento();
+
+        // Criar registro de tomada
+        RegistroTomada registro = new RegistroTomada();
+        registro.setMedicamento(medicamento);
+        registro.setUsuario(medicamento.getUsuario());
+        registro.setHorarioMedicamento(horario);
+
+        registro.setDataPrevista(LocalDate.now());
+
+        // Converter horário da String ex: "12:00"
+        if (horario.getHorario() != null) {
+            registro.setHorarioPrevisto(LocalTime.parse(horario.getHorario()));
+        }
+
+        // Marcar como tomado
+        registro.registrarTomada(LocalTime.now());
+
+        registroRepository.save(registro);
+
+        // Atualiza status do horário (pra reflexo no DTO)
+        horario.setTomadoHoje(true);
+        horarioRepository.save(horario);
+    }
 
     // Valida se o medicamento existe
     private Medicamento validarMedicamento(Long id) {

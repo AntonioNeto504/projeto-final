@@ -14,4 +14,9 @@ public interface MedicamentoRepository extends JpaRepository<Medicamento, Long> 
     boolean existsByUsuarioIdAndMedicamentoAnvisaIdAndContatarEmergenciaFalse(
             Long usuarioId, Long medicamentoAnvisaId
     );
+
+    List<Medicamento> findByUsuarioIdAndMedicamentoAnvisa_NomeProdutoContainingIgnoreCase(
+            Long usuarioId, String nomeProduto
+    );
+
 }

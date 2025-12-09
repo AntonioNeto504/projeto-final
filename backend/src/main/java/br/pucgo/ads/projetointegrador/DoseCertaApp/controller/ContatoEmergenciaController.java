@@ -20,9 +20,13 @@ public class ContatoEmergenciaController {
     }
 
     @GetMapping("/{usuarioId}")
-    public List<ContatoEmergencia> listarPorUsuario(@PathVariable Long usuarioId) {
-        return service.listarPorUsuario(usuarioId);
+    public List<ContatoEmergenciaResponseDTO> listarPorUsuario(@PathVariable Long usuarioId) {
+        return service.listarPorUsuario(usuarioId)
+                .stream()
+                .map(ContatoEmergenciaResponseDTO::new)
+                .toList();
     }
+
 
     @PostMapping
     public ContatoEmergenciaResponseDTO criar(@RequestBody ContatoEmergenciaDTO dto) {

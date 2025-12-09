@@ -3,12 +3,14 @@ package br.pucgo.ads.projetointegrador.DoseCertaApp.model;
 
 import br.pucgo.ads.projetointegrador.plataforma.entity.User;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.util.List;
 
 @Entity
 @Table(name = "medicamentos")
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Medicamento {
 
     @Id

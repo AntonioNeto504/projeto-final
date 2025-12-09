@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class MedicamentoService {
@@ -114,8 +115,21 @@ public class MedicamentoService {
         medicamento.setDataFim(LocalDate.now().plusDays(dias - 1));
 
         if (medicamento.getHorarios() != null) {
-            medicamento.getHorarios().forEach(h -> h.setMedicamento(medicamento));
+            medicamento.getHorarios().forEach(h -> {
+                h.setMedicamento(medicamento);
+
+                // se for nulo (por payload vazio), evite gravar objeto vazio:
+                if (h.getHorario() == null || h.getHorario().isBlank()) {
+                    // opcional: lançar erro para o front ou pular
+                    throw new IllegalArgumentException("Cada horário deve conter o campo 'horario'.");
+                }
+
+                if (h.getDataUltimaAtualizacao() == null) {
+                    h.setDataUltimaAtualizacao(LocalDate.now());
+                }
+            });
         }
+
 
         return medicamentoRepository.save(medicamento);
     }
@@ -157,9 +171,19 @@ public class MedicamentoService {
             existente.getHorarios().clear();
             atualizado.getHorarios().forEach(h -> {
                 h.setMedicamento(existente);
+
+                if (h.getHorario() == null || h.getHorario().isBlank()) {
+                    throw new IllegalArgumentException("Cada horário deve conter o campo 'horario'.");
+                }
+
+                if (h.getDataUltimaAtualizacao() == null) {
+                    h.setDataUltimaAtualizacao(LocalDate.now());
+                }
+
                 existente.getHorarios().add(h);
             });
         }
+
 
         return medicamentoRepository.save(existente);
     }
@@ -178,4 +202,45 @@ public class MedicamentoService {
         return userRepository.findById(usuarioId)
                 .orElseThrow(() -> new EntityNotFoundException("Usuário não encontrado!"));
     }
+    public List<MedicamentoResponseDTO> buscarPorNomeAnvisa(String nome, Long usuarioId) {
+
+        validarUsuario(usuarioId);
+
+        List<Medicamento> medicamentos = medicamentoRepository
+                .findByUsuarioIdAndMedicamentoAnvisa_NomeProdutoContainingIgnoreCase(usuarioId, nome);
+
+        return medicamentos.stream().map(medicamento -> {
+
+            List<MedicamentoHorario> horarios =
+                    horarioRepository.findByMedicamentoIdOrderByHorarioAsc(medicamento.getId());
+
+            List<RegistroTomada> registrosDoDia =
+                    registroRepository.findByMedicamentoIdAndDataPrevista(
+                            medicamento.getId(),
+                            LocalDate.now()
+                    );
+
+            return new MedicamentoResponseDTO(medicamento, horarios, registrosDoDia);
+
+        }).toList();
+    }
+    public List<MedicamentoResponseDTO> listarPorUsuarioComDetalhes(Long usuarioId) {
+        validarUsuario(usuarioId);
+
+        List<Medicamento> medicamentos = medicamentoRepository.findByUsuarioId(usuarioId);
+
+        return medicamentos.stream().map(medicamento -> {
+            List<MedicamentoHorario> horarios =
+                    horarioRepository.findByMedicamentoIdOrderByHorarioAsc(medicamento.getId());
+
+            List<RegistroTomada> registrosDoDia =
+                    registroRepository.findByMedicamentoIdAndDataPrevista(
+                            medicamento.getId(),
+                            LocalDate.now()
+                    );
+
+            return new MedicamentoResponseDTO(medicamento, horarios, registrosDoDia);
+        }).collect(Collectors.toList());
+    }
+
 }

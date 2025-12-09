@@ -39,6 +39,7 @@ import { anvisaApi } from "../api/anvisaApi";
 import type { MedicamentoAnvisaDto } from "../api/anvisaApi";
 import { medicamentosApi } from "../api/medicamentosApi";
 import { getUsuarioId } from "../utils/session";
+import ContatoSelector from "../components/ContatoSelector";
 
 interface Props {
   medicamentoEditar?: Medicamento | null;
@@ -315,29 +316,34 @@ const CadastroMedicamento: React.FC<Props> = ({ medicamentoEditar }) => {
     return true;
   };
 
-  function montarPayload() {
-    const horarios = form.horarios.map((h) => ({ hora: h }));
+function montarPayload() {
+  const horarios = (form.horarios || [])
+    .map(h => (typeof h === "string" ? h.trim() : ""))
+    .filter(h => h)
+    .map(h => ({ horario: h }));  // <<< O backend exige este nome
 
-    const tarja = form.tarja ? form.tarja.toUpperCase() : "SEM_TARJA";
+  const tarja = form.tarja ? form.tarja.toUpperCase() : "SEM_TARJA";
 
-    if (form.tipo === "liquido") {
-      return {
-        totalFrasco: form.quantidadeTotal,
-        doseDiaria: form.mlPorDose,
-        tipoDosagem: "ml",
-        tarja,
-        horarios,
-      };
-    }
-
+  if (form.tipo === "liquido") {
     return {
-      quantidadeCartela: form.quantidadeTotal,
-      doseDiaria: form.unidadePorDose,
-      tipoDosagem: "mg",
+      totalFrasco: form.quantidadeTotal,
+      doseDiaria: form.mlPorDose,
+      tipoDosagem: "ml",
       tarja,
       horarios,
     };
   }
+
+  return {
+    quantidadeCartela: form.quantidadeTotal,
+    doseDiaria: form.unidadePorDose,
+    tipoDosagem: "mg",
+    tarja,
+    horarios,
+  };
+}
+
+
 
   const handleSubmit = async (e?: FormEvent) => {
     if (e) e.preventDefault();
@@ -365,7 +371,7 @@ const CadastroMedicamento: React.FC<Props> = ({ medicamentoEditar }) => {
     }
 
     const payload = montarPayload();
-
+    console.log(">>> PAYLOAD A ENVIAR:", JSON.stringify(payload, null, 2));
     try {
       await medicamentosApi.criar(usuarioId, form.anvisaId, payload);
       alert("Medicamento cadastrado com sucesso!");

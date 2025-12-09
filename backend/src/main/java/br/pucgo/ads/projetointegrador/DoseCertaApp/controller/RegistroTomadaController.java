@@ -10,7 +10,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 @RestController
-@RequestMapping("/registros-tomada")
+@RequestMapping("/api/registro-tomada")
 public class RegistroTomadaController {
 
     private final RegistroTomadaService service;
@@ -22,6 +22,13 @@ public class RegistroTomadaController {
     @GetMapping("/medicamento/{medicamentoId}")
     public List<RegistroTomada> listarPorMedicamento(@PathVariable Long medicamentoId) {
         return service.listarPorMedicamento(medicamentoId);
+    }
+
+    // *** ESTE É O ENDPOINT QUE O FRONT CHAMA ***
+    @PostMapping
+    public ResponseEntity<Void> registrarTomadaDireto(@RequestParam Long horarioId) {
+        service.registrarTomadaDireto(horarioId);
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/medicamento/{medicamentoId}/dia")
@@ -41,7 +48,7 @@ public class RegistroTomadaController {
         return ResponseEntity.ok(service.marcarTomada(id, tomado));
     }
 
-    @PostMapping
+    @PostMapping("/create")
     public ResponseEntity<RegistroTomada> criarRegistro(@RequestBody RegistroTomadaRegistroRequest request) {
         RegistroTomada salvo = service.criarRegistro(
                 request.getMedicamentoId(),
@@ -51,12 +58,12 @@ public class RegistroTomadaController {
         return ResponseEntity.ok(salvo);
     }
 
-    // ---------------- DTO ----------------
+    // DTO
     public static class RegistroTomadaRegistroRequest {
 
         private Long medicamentoId;
         private Long horarioId;
-        private LocalDate dataPrevista;  // <-- atualizado
+        private LocalDate dataPrevista;
 
         public Long getMedicamentoId() { return medicamentoId; }
         public void setMedicamentoId(Long medicamentoId) { this.medicamentoId = medicamentoId; }

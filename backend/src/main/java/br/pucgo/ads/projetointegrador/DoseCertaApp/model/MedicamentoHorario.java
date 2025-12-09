@@ -17,8 +17,13 @@ public class MedicamentoHorario {
     @JsonIgnore
     private Medicamento medicamento;
 
+    @Column(name = "horario")
     private String horario; // por exemplo: "08:00"
+
+    @Column(name = "tomado_hoje")
     private Boolean tomadoHoje = false;
+
+    @Column(name = "data_ultima_atualizacao")
     private LocalDate dataUltimaAtualizacao;
 
     // ===== Getters e Setters =====
@@ -38,5 +43,18 @@ public class MedicamentoHorario {
             this.tomadoHoje = false;
             this.dataUltimaAtualizacao = LocalDate.now();
         }
+    }
+
+    // ===== Callbacks JPA para garantir preenchimento da data =====
+    @PrePersist
+    public void prePersist() {
+        if (this.dataUltimaAtualizacao == null) {
+            this.dataUltimaAtualizacao = LocalDate.now();
+        }
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        this.dataUltimaAtualizacao = LocalDate.now();
     }
 }
