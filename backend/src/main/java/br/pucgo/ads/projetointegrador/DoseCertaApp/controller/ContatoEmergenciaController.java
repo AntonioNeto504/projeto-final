@@ -26,6 +26,8 @@ public class ContatoEmergenciaController {
                 .map(ContatoEmergenciaResponseDTO::new)
                 .toList();
     }
+
+
     @PostMapping
     public ContatoEmergenciaResponseDTO criar(@RequestBody ContatoEmergenciaDTO dto) {
         ContatoEmergencia contato = service.criar(dto);

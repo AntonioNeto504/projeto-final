@@ -1,5 +1,5 @@
 // src/features/medicamentos/pages/ListaMedicamentosPage.tsx
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Button,
@@ -7,238 +7,146 @@ import {
   CardContent,
   Typography,
   Stack,
-  List,
-  ListItem,
-  ListItemText,
-  IconButton,
   Divider,
-} from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
-import HomeIcon from '@mui/icons-material/Home';
-import HistoryIcon from '@mui/icons-material/History';
-import { useNavigate } from 'react-router-dom';
-import { loadMedicamentos, registrarTomada, loadHistorico } from '../service/medicamentoService';
-import type { Medicamento } from '../service/medicamentoService';
+  Chip,
+} from "@mui/material";
 
-const STORAGE_KEY = 'medmod:medicamentos';
+import AddIcon from "@mui/icons-material/Add";
+import HomeIcon from "@mui/icons-material/Home";
+import HistoryIcon from "@mui/icons-material/History";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+
+import { useNavigate } from "react-router-dom";
+import { medicamentoApi, type MedicamentoDTO } from "../api/medicamentoApi";
+import { getUsuarioId } from "@/features/medicamentos/utils/session";
 
 export default function ListaMedicamentosPage() {
   const navigate = useNavigate();
-  const [lista, setLista] = useState<Medicamento[]>([]);
-  const [historico, setHistorico] = useState<any[]>([]);
+  const [lista, setLista] = useState<MedicamentoDTO[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const loadAll = () => {
-    setLista(loadMedicamentos());
-    setHistorico(loadHistorico());
-  };
+  const usuarioId = getUsuarioId();
 
-  useEffect(() => {
-    loadAll();
-    const onStorage = (ev: StorageEvent) => {
-      if (ev.key === STORAGE_KEY || ev.key === 'medmod:medicamentos_history') loadAll();
-    };
-    window.addEventListener('storage', onStorage);
- return () => window.removeEventListener('storage', onStorage);
-  }, []);
-
-  const isSameLocalDay = (iso: string) => {
-    try {
-      const d = new Date(iso);
-      const now = new Date();
-      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
-    } catch {
-      return false;
-    }
-  };
-
-  // mapa de tomados hoje por medId_index => Set('medId_0','medId_1',...)
-  const tomadosHoje = useMemo(() => {
-    const set = new Set<string>();
-    for (const h of historico) {
-      if (!h.medicamentoId || !h.takenAt) continue;
-      if (isSameLocalDay(h.takenAt)) {
-        if (typeof h.horarioIndex === 'number') {
-          set.add(`${h.medicamentoId}_${h.horarioIndex}`);
-        } else {
-          // histórico antigo sem horarioIndex: fallback para índice 0
-          set.add(`${h.medicamentoId}_0`);
-        }
-      }
-    }
-    return set;
-  }, [historico]);
-
-  // verifica se todos os horários programados para o medicamento foram tomados hoje
-  const allTakenToday = (m: Medicamento) => {
-    if (!m.id) return false;
-    const count = m.horarios && m.horarios.length > 0 ? m.horarios.length : Math.max(1, Number(m.vezesAoDia ?? 1));
-    for (let i = 0; i < count; i++) {
-      if (!tomadosHoje.has(`${m.id}_${i}`)) return false;
-    }
-    return true;
-  };
-
-  const onTomar = (medId?: string, horarioIndex?: number) => {
-    if (!medId) return;
-    if (!confirm('Deseja registrar que tomou este medicamento agora?')) return;
+  const carregar = async () => {
+    if (!usuarioId) return;
 
     setLoading(true);
     try {
-      const res = registrarTomada(medId, horarioIndex);
-      if (!res) {
-        alert('Erro ao registrar tomada (medicamento não encontrado).');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Ocorreu um erro ao registrar.');
+      const dados = await medicamentoApi.listarPorUsuario(usuarioId);
+
+      // FILTRO: remover medicamentos cujo TODOS os horários já foram marcados hoje
+      const filtrados = dados.filter((m) => {
+        // se não houver horários, considera como não mostrar (opcional). Aqui mantemos: mostrar somente se existe ao menos 1 horário não marcado hoje
+        if (!m.horarios || m.horarios.length === 0) return false;
+        // manter o medicamento se existe pelo menos um horário com tomadoHoje === false
+        return m.horarios.some((h) => !h.tomadoHoje);
+      });
+
+      setLista(filtrados);
     } finally {
-      loadAll();
       setLoading(false);
     }
   };
 
-  const handleDelete = (id?: string) => {
-    if (!id) return;
-    if (!confirm('Remover este medicamento?')) return;
+  useEffect(() => {
+    carregar();
+    // opcional: se quiser recarregar ao voltar da rota de cadastro, poderia usar um listener de foco/route change aqui
+  }, []);
+
+  const onTomar = async (horarioId: number) => {
+    if (!confirm("Confirmar que tomou este medicamento agora?")) return;
+
     try {
-      const meds = loadMedicamentos().filter((m) => m.id !== id);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(meds));
-      setLista(meds);
-    } catch (err) {
-      console.error(err);
+      await medicamentoApi.registrarTomada(horarioId);
+      await carregar(); // recarrega lista com tomadoHoje atualizado (e remove medicamento se todos os horários ficaram marcados)
+    } catch {
+      alert("Erro ao registrar tomada.");
     }
   };
 
-  // renderiza botão para cada horário (ou vezesAoDia)
-  const renderHorarioButtons = (m: Medicamento) => {
-    const horarios =
-      m.horarios && m.horarios.length > 0 ? m.horarios : Array(Math.max(1, Number(m.vezesAoDia ?? 1))).fill('');
-    return (
-      <Stack direction="row" spacing={1} alignItems="center">
-        {horarios.map((h, idx) => {
-          const key = `${m.id}_${idx}`;
-          const alreadyTaken = m.id ? tomadosHoje.has(`${m.id}_${idx}`) : false;
-          const label = h && h.length ? h : `Horário ${idx + 1}`;
-          return (
-            <Button
-              key={key}
-              onClick={() => onTomar(m.id, idx)}
-              startIcon={<CheckCircleOutlineIcon />}
-              variant={alreadyTaken ? 'contained' : 'outlined'}
-              color={alreadyTaken ? 'success' : 'primary'}
-              sx={{ fontSize: 14, px: 2, minHeight: 40 }}
-              disabled={alreadyTaken || loading}
-            >
-              {alreadyTaken ? 'Tomado' : label}
-            </Button>
-          );
-        })}
-      </Stack>
-    );
-  };
-
-  // lista filtrada: esconde medicamentos que já tiveram todos os horários tomados hoje
-  const listaVisivel = lista.filter((m) => !allTakenToday(m));
+  const tarjaColor = {
+    "PRETA": "#000",
+    "VERMELHA": "#DB0012",
+    "AMARELA": "#DBC100",
+    "SEM_TARJA": "#1565C0"
+  }
 
   return (
-    <Box sx={{ py: 4, px: 2, display: 'flex', justifyContent: 'center' }}>
-      <Card sx={{ width: '100%', maxWidth: 980, borderRadius: 3 }}>
-        <CardContent sx={{ p: { xs: 3, sm: 5 } }}>
+    <Box sx={{ py: 4, px: 2, display: "flex", justifyContent: "center" }}>
+      <Card sx={{ width: "100%", maxWidth: 900, borderRadius: 1 }}>
+        <CardContent>
+          {/* HEADER */}
           <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-            <Typography variant="h5" sx={{ fontSize: 24, fontWeight: 700, color: 'primary.main' }}>
-              Medicamentos Cadastrados
+            <Typography variant="h5" sx={{ fontSize: 24, fontWeight: 700, color: "primary.main" }}>
+              Medicamentos em Uso
             </Typography>
 
-            {/* Botões de navegação — semelhantes ao Histórico (grandes e acessíveis) */}
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="center">
-              <Button
-                variant="contained"
-                startIcon={<HomeIcon />}
-                onClick={() => navigate('/home')}
-                sx={{ fontSize: 16, px: 2, minHeight: 48 }}
-              >
-                Página Inicial
+            <Stack direction="row" spacing={1}>
+              <Button variant="contained" startIcon={<HomeIcon />} onClick={() => navigate("/home")}
+                sx={{ fontSize: 16, padding: "8px 12px", fontWeight: "normal" }}>
+                Home
               </Button>
 
-              <Button
-                variant="outlined"
-                startIcon={<HistoryIcon />}
-                onClick={() => navigate('/medicamentos/historico')}
-                sx={{ fontSize: 16, px: 2, minHeight: 48 }}
-              >
+              <Button variant="outlined" startIcon={<HistoryIcon />} onClick={() => navigate("/medicamentos/historico")}
+                sx={{ fontSize: 16, padding: "8px 12px", fontWeight: "normal" }}>
                 Histórico
               </Button>
 
-              <Button
-                variant="contained"
-                color="success"
-                startIcon={<AddIcon />}
-                onClick={() => navigate('/medicamentos/cadastro')}
-                sx={{ fontSize: 16, px: 2, minHeight: 48 }}
-              >
+              <Button variant="contained" color="success" startIcon={<AddIcon />}
+                onClick={() => navigate("/medicamentos/cadastro")} sx={{ fontSize: 16, padding: "8px 12px", fontWeight: "normal" }}>
                 Cadastrar
               </Button>
             </Stack>
           </Stack>
 
-          {listaVisivel.length === 0 ? (
-            <Box sx={{ py: 6, textAlign: 'center', bgcolor: '#e9f3ff', borderRadius: 2, border: '1px dashed #9ec9ff' }}>
-              <Typography sx={{ fontSize: 20, fontWeight: 700, color: 'primary.main', mb: 1 }}>Nenhum medicamento ativo para hoje</Typography>
-              <Typography sx={{ fontSize: 16, color: 'text.secondary', mb: 3 }}>
-                Todos os horários programados foram cumpridos (ou não há medicamentos cadastrados).
-              </Typography>
-              <Stack direction="row" spacing={2} justifyContent="center">
-                <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/medicamentos/cadastro')} sx={{ fontSize: 16, px: 3 }}>
-                  Cadastrar Medicamento
-                </Button>
-                <Button variant="outlined" startIcon={<HistoryIcon />} onClick={() => navigate('/medicamentos/historico')} sx={{ fontSize: 16, px: 3 }}>
-                  Ver Histórico
-                </Button>
-              </Stack>
-            </Box>
+          {/* LISTAGEM */}
+          {lista.length === 0 ? (
+            <Typography sx={{ textAlign: "center", fontSize: 18, color: "text.secondary", py: 5 }}>
+              Nenhum medicamento ativo para hoje ✨
+            </Typography>
           ) : (
-            <List>
-              {listaVisivel.map((m) => {
-                const remaining = Number(m.quantidadeTotal ?? 0);
-                const amountLabel = m.tipo === 'liquido' ? `${remaining} ml` : `${remaining} comprimidos`;
-                return (
-                  <React.Fragment key={m.id ?? Math.random()}>
-                    <ListItem
-                      secondaryAction={
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          {renderHorarioButtons(m)}
+            <Stack spacing={3}>
+              {lista.map((m) => (
+                <Box key={m.id} sx={{ p: 2, borderRadius: 2 }}>
+                  <Stack direction="row" alignItems="center" justifyContent="space-between">
+                    <Typography sx={{ fontSize: 18, fontWeight: 700 }}>{m.nome}</Typography>
+                    <Chip label={m.tarja} size="small" sx={{ padding: "4px 8px", bgcolor: `${tarjaColor[m.tarja]}`, color: "white" }} />
+                  </Stack>
 
-                          <IconButton edge="end" aria-label="edit" onClick={() => navigate('/medicamentos/cadastro', { state: { medicamento: m } })}>
-                            <EditIcon />
-                          </IconButton>
+                  <Divider sx={{ my: 1 }} />
 
-                          <IconButton edge="end" aria-label="delete" onClick={() => handleDelete(m.id)}>
-                            <DeleteIcon />
-                          </IconButton>
-                        </Stack>
-                      }
-                      sx={{ py: 2 }}
-                    >
-                      <ListItemText
-                        primary={<Typography sx={{ fontSize: 20, fontWeight: 700 }}>{m.nome}</Typography>}
-                        secondary={
-                          <Typography sx={{ fontSize: 16, color: 'text.secondary' }}>
-                            {m.tipo ? `${m.tipo} • ` : ''}
-                            <strong style={{ fontSize: 18 }}>{amountLabel}</strong>
-                            {m.vezesAoDia ? ` • ${m.vezesAoDia}x/dia` : ''}
-                          </Typography>
-                        }
-                      />
-                    </ListItem>
-                    <Divider />
-                  </React.Fragment>
-                );
-              })}
-            </List>
+                  {/* LISTA DE HORÁRIOS */}
+                  <Stack spacing={1}>
+                    {m.horarios.map((h) => (
+                      <Stack key={h.id} direction="row" alignItems="center" justifyContent="space-between" sx={{ py: 1 }}>
+                        <Typography sx={{ fontSize: 18 }}>⏰ {h.horario}</Typography>
+
+                        {h.tomadoHoje ? (
+                          <Chip
+                            label="Tomado"
+                            color="success"
+                            icon={<CheckCircleOutlineIcon sx={{ fontSize: "20px" }} />}
+                            sx={{ px: 2 }}
+                          />
+                        ) : (
+                          <Button
+                            variant="outlined"
+                            startIcon={<CheckCircleOutlineIcon sx={{ fontSize: "20px" }} />}
+                            onClick={() => onTomar(h.id)}
+                            sx={{ fontSize: 16, padding: "8px 12px", fontWeight: "normal" }}
+                            disabled={loading}
+                          >
+                            Tomar
+                          </Button>
+                        )}
+                      </Stack>
+                    ))}
+                  </Stack>
+
+                  <Divider sx={{ mt: 2 }} />
+                </Box>
+              ))}
+            </Stack>
           )}
         </CardContent>
       </Card>

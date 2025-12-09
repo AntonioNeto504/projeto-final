@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { Contato, ContatoPayload } from "../types/contato";
+import type { Contato, ContatoPayload } from "../service/contatosApiService";
+
 import {
   carregarContatosDoUsuario,
   criarContato as apiCriarContato,

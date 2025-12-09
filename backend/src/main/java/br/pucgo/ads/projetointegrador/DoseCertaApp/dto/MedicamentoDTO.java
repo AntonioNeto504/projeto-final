@@ -1,35 +1,40 @@
 package br.pucgo.ads.projetointegrador.DoseCertaApp.dto;
 
-
 import br.pucgo.ads.projetointegrador.DoseCertaApp.model.TarjaTipo;
-
 import java.util.List;
 
 public class MedicamentoDTO {
 
     private Long id;
-    private String nome;
+    private String nome;              // nome local
+    private String nomeAnvisa;        // nome vindo da tabela ANVISA
+
     private String dosagemTipo;
     private Double dosagemValor;
     private Integer quantidadePorDose;
+
     private List<HorarioDTO> horarios;
 
-    // 🔄 Campo corrigido — agora enum TarjaTipo
     private TarjaTipo tarja;
 
     private Boolean urgencia;
     private Boolean avisarContato;
     private Long contatoEmergenciaId;
     private Long usuarioId;
+
     private List<String> checkins;
 
     public MedicamentoDTO() {}
 
+    // Getters e Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
     public String getNome() { return nome; }
     public void setNome(String nome) { this.nome = nome; }
+
+    public String getNomeAnvisa() { return nomeAnvisa; }
+    public void setNomeAnvisa(String nomeAnvisa) { this.nomeAnvisa = nomeAnvisa; }
 
     public String getDosagemTipo() { return dosagemTipo; }
     public void setDosagemTipo(String dosagemTipo) { this.dosagemTipo = dosagemTipo; }
@@ -43,7 +48,6 @@ public class MedicamentoDTO {
     public List<HorarioDTO> getHorarios() { return horarios; }
     public void setHorarios(List<HorarioDTO> horarios) { this.horarios = horarios; }
 
-    // 🔄 Getters/Setters de TARJA (Enum)
     public TarjaTipo getTarja() { return tarja; }
     public void setTarja(TarjaTipo tarja) { this.tarja = tarja; }
 

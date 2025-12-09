@@ -39,6 +39,7 @@ import { anvisaApi } from "../api/anvisaApi";
 import type { MedicamentoAnvisaDto } from "../api/anvisaApi";
 import { medicamentosApi } from "../api/medicamentosApi";
 import { getUsuarioId } from "../utils/session";
+import ContatoSelector from "../components/ContatoSelector";
 
 interface Props {
   medicamentoEditar?: Medicamento | null;
@@ -70,20 +71,19 @@ const Col: React.FC<{ children: React.ReactNode; flex?: number }> = ({
 }) => <Box sx={{ flex, minWidth: 0 }}>{children}</Box>;
 
 /* Estilos reutilizados */
-const labelStyle = { fontSize: 18, lineHeight: 1.2 };
+const labelStyle = { fontSize: 16 };
 const selectBoxSx = {
-  borderRadius: 28,
+  borderRadius: 1,
   backgroundColor: "background.paper",
   border: "1px solid #e0e0e0",
-  minHeight: 56,
   "& .MuiSelect-select": {
-    padding: "14px 18px",
+    padding: "8px 12px",
     display: "flex",
     alignItems: "center",
-    fontSize: 18,
+    fontSize: 16,
   },
 };
-const selectMenuItemSx = { fontSize: 18 };
+const selectMenuItemSx = { fontSize: 16 };
 
 const CadastroMedicamento: React.FC<Props> = ({ medicamentoEditar }) => {
   const navigate = useNavigate();
@@ -316,7 +316,10 @@ const CadastroMedicamento: React.FC<Props> = ({ medicamentoEditar }) => {
   };
 
   function montarPayload() {
-    const horarios = form.horarios.map((h) => ({ hora: h }));
+    const horarios = (form.horarios || [])
+      .map(h => (typeof h === "string" ? h.trim() : ""))
+      .filter(h => h)
+      .map(h => ({ horario: h }));  // <<< O backend exige este nome
 
     const tarja = form.tarja ? form.tarja.toUpperCase() : "SEM_TARJA";
 
@@ -338,6 +341,8 @@ const CadastroMedicamento: React.FC<Props> = ({ medicamentoEditar }) => {
       horarios,
     };
   }
+
+
 
   const handleSubmit = async (e?: FormEvent) => {
     if (e) e.preventDefault();
@@ -365,7 +370,7 @@ const CadastroMedicamento: React.FC<Props> = ({ medicamentoEditar }) => {
     }
 
     const payload = montarPayload();
-
+    console.log(">>> PAYLOAD A ENVIAR:", JSON.stringify(payload, null, 2));
     try {
       await medicamentosApi.criar(usuarioId, form.anvisaId, payload);
       alert("Medicamento cadastrado com sucesso!");
@@ -457,22 +462,22 @@ const CadastroMedicamento: React.FC<Props> = ({ medicamentoEditar }) => {
         px: 2,
       }}
     >
-      <Card sx={{ width: "100%", maxWidth: 860, borderRadius: 3, boxShadow: 4 }}>
+      <Card sx={{ width: "100%", maxWidth: 860, borderRadius: 1, boxShadow: 4 }}>
         <CardContent sx={{ p: { xs: 3, sm: 5 } }}>
           <Typography
-            variant="h4"
-            align="center"
-            color="primary"
-            fontWeight={800}
+            variant="h1"
+            align="left"
+            color="dark"
+            fontWeight={600}
             gutterBottom
-            sx={{ fontSize: { xs: 22, sm: 26 } }}
+            sx={{ fontSize: { xs: 22, sm: 26 }, mb: 2 }}
           >
             {form.id ? "Editar Medicamento" : "Cadastro do Medicamento"}
           </Typography>
 
           <form onSubmit={handleSubmit} noValidate>
             {step === 1 && (
-              <Stack spacing={3} sx={{ mt: 1 }}>
+              <Stack spacing={1} sx={{ mt: 1 }}>
                 {/* AUTOCOMPLETE ANVISA */}
                 <Autocomplete
                   options={medicamentosAnvisa.slice(0, 9)}
@@ -502,8 +507,9 @@ const CadastroMedicamento: React.FC<Props> = ({ medicamentoEditar }) => {
                         inputProps: {
                           ...params.inputProps,
                           style: {
-                            fontSize: 20,
-                            padding: "14px 12px",
+                            fontSize: 16,
+                            padding: "4px",
+                            borderRadius: "12px"
                           },
                         },
                       }}
@@ -514,9 +520,9 @@ const CadastroMedicamento: React.FC<Props> = ({ medicamentoEditar }) => {
                 <ResponsiveRow gap={2}>
                   <Col flex={1}>
                     <FormControl fullWidth size="small" margin="dense">
-                      <InputLabel id="tipo-label" sx={labelStyle}>
+                      {/* <InputLabel id="tipo-label" sx={labelStyle}>
                         Tipo
-                      </InputLabel>
+                      </InputLabel> */}
                       <Select
                         labelId="tipo-label"
                         name="tipo"
@@ -551,8 +557,8 @@ const CadastroMedicamento: React.FC<Props> = ({ medicamentoEditar }) => {
                         InputProps={{
                           inputProps: {
                             style: {
-                              fontSize: 20,
-                              padding: "12px 12px",
+                              fontSize: 16,
+                              padding: "8px 12px",
                             },
                           },
                         }}
@@ -573,8 +579,8 @@ const CadastroMedicamento: React.FC<Props> = ({ medicamentoEditar }) => {
                         InputProps={{
                           inputProps: {
                             style: {
-                              fontSize: 20,
-                              padding: "12px 12px",
+                              fontSize: 16,
+                              padding: "8px 12px",
                             },
                           },
                         }}
@@ -584,7 +590,7 @@ const CadastroMedicamento: React.FC<Props> = ({ medicamentoEditar }) => {
                 </ResponsiveRow>
 
                 <ResponsiveRow gap={2}>
-                  <Col flex={1.4}>
+                  <Col flex={1}>
                     <TextField
                       label={
                         form.tipo === "liquido"
@@ -632,7 +638,7 @@ const CadastroMedicamento: React.FC<Props> = ({ medicamentoEditar }) => {
                     variant="outlined"
                     onClick={() => navigate("/medicamentos/lista")}
                     size="large"
-                    sx={{ maxWidth: { sm: 180 }, fontSize: 18, minHeight: 52 }}
+                    sx={{ fontSize: 16, padding: '8px 16px', fontWeight: 'medium' }}
                   >
                     ← Voltar
                   </Button>
@@ -647,16 +653,16 @@ const CadastroMedicamento: React.FC<Props> = ({ medicamentoEditar }) => {
                       setStep(2);
                     }}
                     size="large"
-                    sx={{ maxWidth: { sm: 320 }, fontSize: 18, minHeight: 56 }}
+                    sx={{ fontSize: 16, padding: '8px 16px', fontWeight: 'medium' }}
                   >
-                    Próxima etapa →
+                    Próxima →
                   </Button>
                 </Box>
               </Stack>
             )}
 
             {step === 2 && (
-              <Stack spacing={3} sx={{ mt: 1 }}>
+              <Stack spacing={2} sx={{ mt: 1 }}>
                 <Typography variant="h5" sx={{ fontSize: 20, fontWeight: 700 }}>
                   Detalhes e Horários
                 </Typography>
@@ -716,7 +722,7 @@ const CadastroMedicamento: React.FC<Props> = ({ medicamentoEditar }) => {
                         name="tarja"
                         value={form.tarja}
                         onChange={handleInputChange as any}
-                        sx={{ "& .MuiSelect-select": { fontSize: 18 } }}
+                        sx={{ "& .MuiSelect-select": { fontSize: 16 } }}
                       >
                         <MenuItem value="sem_tarja" sx={selectMenuItemSx}>
                           Comum
@@ -735,11 +741,11 @@ const CadastroMedicamento: React.FC<Props> = ({ medicamentoEditar }) => {
                   </Box>
 
                   <Box sx={{ flex: 1, pl: { xs: 0, sm: 2 }, display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
-                    <Typography sx={{ fontSize: 16, fontWeight: 600, mb: 1, textAlign: { xs: "left", sm: "right" } }}>
+                    <Typography sx={{ fontSize: 16, fontWeight: 600, mb: 1, textAlign: { xs: "left", sm: "right" }, alignSelf: "start" }}>
                       Deseja vincular contato de emergência?
                     </Typography>
 
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 2, width: "100%" }}>
                       <FormControl fullWidth size="small" margin="dense" sx={{ ...selectBoxSx }}>
                         <Select
                           labelId="contato-emergencia-label"
@@ -758,10 +764,10 @@ const CadastroMedicamento: React.FC<Props> = ({ medicamentoEditar }) => {
                             const c = contatos.find((x) => x.id === Number(selected));
                             return c ? `${c.nome} — ${c.telefone}` : String(selected);
                           }}
-                          sx={{ "& .MuiSelect-select": { fontSize: 18 } }}
+                          sx={{ "& .MuiSelect-select": { fontSize: 18 }, maxWidth: "300px" }}
                         >
                           <MenuItem value="">
-                            <em style={{ fontSize: 18 }}>Não vincular</em>
+                            <em style={{ fontSize: 16 }}>Não vincular</em>
                           </MenuItem>
 
                           {contatos.map((c) => (
@@ -770,7 +776,7 @@ const CadastroMedicamento: React.FC<Props> = ({ medicamentoEditar }) => {
                             </MenuItem>
                           ))}
 
-                          <MenuItem value="new" sx={{ fontSize: 18 }}>
+                          <MenuItem value="new" sx={{ fontSize: 16 }}>
                             ➕ Cadastrar novo contato
                           </MenuItem>
                         </Select>
@@ -784,18 +790,18 @@ const CadastroMedicamento: React.FC<Props> = ({ medicamentoEditar }) => {
                             setEditingContatoId(null);
                             setOpenContatoDialog(true);
                           }}
-                          sx={{ height: 40, borderRadius: 20, px: 3, textTransform: "none", fontSize: 14, whiteSpace: "nowrap" }}
+                          sx={{ borderRadius: 1, px: 3, textTransform: "none", fontSize: 14, whiteSpace: "nowrap" }}
                         >
                           Cadastrar
                         </Button>
                       ) : (
-                        <Box sx={{ display: "flex", gap: 1 }}>
+                        <Box sx={{ display: "flex", gap: 0 }}>
                           <IconButton
                             aria-label="editar contato"
                             onClick={() => abrirEdicaoContato(Number((form as any).contatoEmergenciaId))}
                             sx={{ borderRadius: 20 }}
                           >
-                            <EditIcon />
+                            <EditIcon fontSize="small" />
                           </IconButton>
 
                           <IconButton
@@ -803,7 +809,7 @@ const CadastroMedicamento: React.FC<Props> = ({ medicamentoEditar }) => {
                             onClick={() => handleDeleteContact(Number((form as any).contatoEmergenciaId))}
                             sx={{ borderRadius: 20 }}
                           >
-                            <DeleteIcon />
+                            <DeleteIcon fontSize="small" />
                           </IconButton>
                         </Box>
                       )}
@@ -814,7 +820,7 @@ const CadastroMedicamento: React.FC<Props> = ({ medicamentoEditar }) => {
                 <Divider />
 
                 <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
-                  <Button variant="outlined" onClick={() => setStep(1)} sx={{ maxWidth: { sm: 180 }, fontSize: 18, minHeight: 52 }}>
+                  <Button variant="outlined" onClick={() => setStep(1)} sx={{ maxWidth: { sm: 180 }, fontSize: 16, padding: "8px 12px", fontWeight: "normal" }}>
                     ← Voltar
                   </Button>
 
@@ -827,9 +833,9 @@ const CadastroMedicamento: React.FC<Props> = ({ medicamentoEditar }) => {
                       }
                       handleSubmit();
                     }}
-                    sx={{ maxWidth: { sm: 320 }, fontSize: 18, minHeight: 56 }}
+                    sx={{ maxWidth: { sm: 320 }, fontSize: 16, padding: "8px 12px", fontWeight: "normal" }}
                   >
-                    Concluir Cadastro
+                    Finalizar
                   </Button>
                 </Box>
               </Stack>
@@ -873,12 +879,12 @@ const CadastroMedicamento: React.FC<Props> = ({ medicamentoEditar }) => {
         </DialogContent>
 
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={() => { setOpenContatoDialog(false); setEditingContatoId(null); }} variant="outlined" sx={{ fontSize: 16 }}>
+          <Button onClick={() => { setOpenContatoDialog(false); setEditingContatoId(null); }} variant="outlined" sx={{ fontSize: 16, padding: "8px 12px", fontWeight: "normal" }}>
             Cancelar
           </Button>
 
-          <Button variant="contained" onClick={handleSaveNewContact} sx={{ fontSize: 16 }}>
-            Salvar contato
+          <Button variant="contained" onClick={handleSaveNewContact} sx={{ fontSize: 16, padding: "8px 12px", fontWeight: "normal" }}>
+            Salvar
           </Button>
         </DialogActions>
       </Dialog>

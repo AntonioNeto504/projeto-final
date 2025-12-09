@@ -54,12 +54,12 @@ const IncialPage: React.FC = () => {
           <Typography
             variant="h4"
             component="h1"
-            sx={{ fontSize: { xs: '1.8rem', sm: '2rem' }, mb: 2, lineHeight: 1.3 }}
+            sx={{ fontSize: { xs: '1rem', sm: '1.5rem' }, mb: 2, lineHeight: 1.3 }}
           >
             Organize seus medicamentos com precisão e segurança
           </Typography>
 
-          <Stack spacing={3} alignItems="center">
+          <Stack spacing={2} alignItems="center" >
             <Button
               component={Link}
               to="/medicamentos/cadastro"
@@ -67,7 +67,7 @@ const IncialPage: React.FC = () => {
               color="primary"
               size="large"
               startIcon={<MedicationIcon />}
-              sx={{ fontSize: { xs: 18, sm: 18 }, fontWeight: 700, borderRadius: 2, py: 1.5, px: 3 }}
+              sx={{ fontSize: { xs: 18, sm: 18 }, fontWeight: 700, borderRadius: 1, py: 1.5, px: 3 }}
             >
               Cadastrar Novo Medicamento
             </Button>
@@ -79,7 +79,7 @@ const IncialPage: React.FC = () => {
               color="primary"
               size="large"
               startIcon={<ListAltIcon />}
-              sx={{ fontSize: { xs: 16, sm: 16 }, fontWeight: 700, borderRadius: 2, py: 1.5, px: 3 }}
+              sx={{ fontSize: { xs: 16, sm: 16 }, fontWeight: 700, borderRadius: 1, py: 1.5, px: 3 }}
             >
               Ver Lista de Medicamentos
             </Button>
@@ -91,7 +91,7 @@ const IncialPage: React.FC = () => {
               color="primary"
               size="large"
               startIcon={<HistoryIcon />}
-              sx={{ fontSize: { xs: 16, sm: 16 }, fontWeight: 700, borderRadius: 2, py: 1.5, px: 3 }}
+              sx={{ fontSize: { xs: 16, sm: 16 }, fontWeight: 700, borderRadius: 1, py: 1.5, px: 3 }}
             >
               Histórico de Medicamentos
             </Button>
