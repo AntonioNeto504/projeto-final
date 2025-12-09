@@ -112,6 +112,9 @@ public class RegistroTomadaService {
         horario.setTomadoHoje(true);
         horarioRepository.save(horario);
     }
+    public List<RegistroTomada> listarPorUsuario(Long usuarioId) {
+        return registroRepository.findByUsuarioId(usuarioId);
+    }
 
     // Valida se o medicamento existe
     private Medicamento validarMedicamento(Long id) {

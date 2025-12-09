@@ -1,5 +1,6 @@
 package br.pucgo.ads.projetointegrador.DoseCertaApp.controller;
 
+import br.pucgo.ads.projetointegrador.DoseCertaApp.dto.RegistroTomadaHistoricoDTO;
 import br.pucgo.ads.projetointegrador.DoseCertaApp.model.RegistroTomada;
 import br.pucgo.ads.projetointegrador.DoseCertaApp.service.RegistroTomadaService;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -23,6 +24,15 @@ public class RegistroTomadaController {
     public List<RegistroTomada> listarPorMedicamento(@PathVariable Long medicamentoId) {
         return service.listarPorMedicamento(medicamentoId);
     }
+    @GetMapping("/usuario/{usuarioId}")
+    public List<RegistroTomadaHistoricoDTO> listarPorUsuario(@PathVariable Long usuarioId) {
+        return service.listarPorUsuario(usuarioId)
+                .stream()
+                .filter(RegistroTomada::isTomado)            // só registros tomados
+                .map(RegistroTomadaHistoricoDTO::new)        // converte para DTO limpo
+                .toList();
+    }
+
 
     // *** ESTE É O ENDPOINT QUE O FRONT CHAMA ***
     @PostMapping

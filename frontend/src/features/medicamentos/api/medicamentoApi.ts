@@ -20,6 +20,13 @@ export const medicamentoApi = {
     return response.data;
   },
 
+    listarHistorico: async (usuarioId: number) => {
+    const resp = await http.get(`/api/registro-tomada/usuario/${usuarioId}`);
+    return resp.data;
+    },
+
+
+
   async registrarTomada(horarioId: number): Promise<any> {
     return http.post(`/api/registro-tomada?horarioId=${horarioId}`);
   }

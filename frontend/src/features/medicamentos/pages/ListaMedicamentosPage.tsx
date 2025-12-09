@@ -1,5 +1,4 @@
 // src/features/medicamentos/pages/ListaMedicamentosPage.tsx
-
 import React, { useEffect, useState } from "react";
 import {
   Box,
@@ -34,7 +33,16 @@ export default function ListaMedicamentosPage() {
     setLoading(true);
     try {
       const dados = await medicamentoApi.listarPorUsuario(usuarioId);
-      setLista(dados);
+
+      // FILTRO: remover medicamentos cujo TODOS os horários já foram marcados hoje
+      const filtrados = dados.filter((m) => {
+        // se não houver horários, considera como não mostrar (opcional). Aqui mantemos: mostrar somente se existe ao menos 1 horário não marcado hoje
+        if (!m.horarios || m.horarios.length === 0) return false;
+        // manter o medicamento se existe pelo menos um horário com tomadoHoje === false
+        return m.horarios.some((h) => !h.tomadoHoje);
+      });
+
+      setLista(filtrados);
     } finally {
       setLoading(false);
     }
@@ -42,6 +50,7 @@ export default function ListaMedicamentosPage() {
 
   useEffect(() => {
     carregar();
+    // opcional: se quiser recarregar ao voltar da rota de cadastro, poderia usar um listener de foco/route change aqui
   }, []);
 
   const onTomar = async (horarioId: number) => {
@@ -49,7 +58,7 @@ export default function ListaMedicamentosPage() {
 
     try {
       await medicamentoApi.registrarTomada(horarioId);
-      await carregar(); // recarrega lista com tomadoHoje atualizado
+      await carregar(); // recarrega lista com tomadoHoje atualizado (e remove medicamento se todos os horários ficaram marcados)
     } catch {
       alert("Erro ao registrar tomada.");
     }
@@ -115,6 +124,7 @@ export default function ListaMedicamentosPage() {
                             variant="outlined"
                             startIcon={<CheckCircleOutlineIcon />}
                             onClick={() => onTomar(h.id)}
+                            disabled={loading}
                           >
                             Tomar
                           </Button>
