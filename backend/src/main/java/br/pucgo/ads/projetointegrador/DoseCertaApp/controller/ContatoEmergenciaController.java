@@ -1,5 +1,7 @@
 package br.pucgo.ads.projetointegrador.DoseCertaApp.controller;
 
+import br.pucgo.ads.projetointegrador.DoseCertaApp.dto.ContatoEmergenciaDTO;
+import br.pucgo.ads.projetointegrador.DoseCertaApp.dto.ContatoEmergenciaResponseDTO;
 import br.pucgo.ads.projetointegrador.DoseCertaApp.model.ContatoEmergencia;
 import br.pucgo.ads.projetointegrador.DoseCertaApp.service.ContatoEmergenciaService;
 import org.springframework.http.ResponseEntity;
@@ -23,24 +25,25 @@ public class ContatoEmergenciaController {
     }
 
     @PostMapping
-    public ResponseEntity<ContatoEmergencia> criar(@RequestBody ContatoRequest request) {
-        ContatoEmergencia salvo = service.criar(request.getUsuarioId(), request.getNome(), request.getTelefone(), request.getRelacao());
-        return ResponseEntity.ok(salvo);
+    public ContatoEmergenciaResponseDTO criar(@RequestBody ContatoEmergenciaDTO dto) {
+        ContatoEmergencia contato = service.criar(dto);
+        return new ContatoEmergenciaResponseDTO(contato);
     }
 
-    public static class ContatoRequest {
-        private Long usuarioId;
-        private String nome;
-        private String telefone;
-        private String relacao;
+    // 🔹 Atualizar contato
+    @PutMapping("/{id}")
+    public ContatoEmergenciaResponseDTO atualizar(
+            @PathVariable Long id,
+            @RequestBody ContatoEmergenciaDTO dto
+    ) {
+        ContatoEmergencia contato = service.atualizar(id, dto);
+        return new ContatoEmergenciaResponseDTO(contato);
+    }
 
-        public Long getUsuarioId() { return usuarioId; }
-        public void setUsuarioId(Long usuarioId) { this.usuarioId = usuarioId; }
-        public String getNome() { return nome; }
-        public void setNome(String nome) { this.nome = nome; }
-        public String getTelefone() { return telefone; }
-        public void setTelefone(String telefone) { this.telefone = telefone; }
-        public String getRelacao() { return relacao; }
-        public void setRelacao(String relacao) { this.relacao = relacao; }
+    // 🔹 Excluir contato
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> excluir(@PathVariable Long id) {
+        service.excluir(id);
+        return ResponseEntity.noContent().build();
     }
 }
