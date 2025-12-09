@@ -431,10 +431,10 @@ const CadastroMedicamento: React.FC<Props> = ({ medicamentoEditar }) => {
         });
 
         setContatos((prev) => [...prev, criado]);
-    setForm((prev) => ({
-      ...(prev as Medicamento),
-      contatoEmergenciaId: String(criado.id)
-    }));
+        setForm((prev) => ({
+          ...(prev as Medicamento),
+          contatoEmergenciaId: String(criado.id)
+        }));
 
       }
 
@@ -475,7 +475,7 @@ const CadastroMedicamento: React.FC<Props> = ({ medicamentoEditar }) => {
               <Stack spacing={3} sx={{ mt: 1 }}>
                 {/* AUTOCOMPLETE ANVISA */}
                 <Autocomplete
-                  options={medicamentosAnvisa}
+                  options={medicamentosAnvisa.slice(0, 9)}
                   getOptionLabel={(opt) => opt.nomeProduto}
                   onChange={(_, selected) => {
                     if (selected) {
