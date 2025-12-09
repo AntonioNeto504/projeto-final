@@ -1,5 +1,6 @@
 package br.pucgo.ads.projetointegrador.DoseCertaApp.controller;
 
+import br.pucgo.ads.projetointegrador.DoseCertaApp.dto.MedicamentoResponseDTO;
 import br.pucgo.ads.projetointegrador.DoseCertaApp.model.Medicamento;
 import br.pucgo.ads.projetointegrador.DoseCertaApp.service.MedicamentoService;
 import org.springframework.http.ResponseEntity;
@@ -27,9 +28,10 @@ public class MedicamentoController {
         return ResponseEntity.ok(service.listarPorUsuario(usuarioId));
     }
 
+    // NOVO ENDPOINT COM HORÁRIOS + REGISTRO DO DIA
     @GetMapping("/{id}")
-    public ResponseEntity<Medicamento> buscarPorId(@PathVariable Long id) {
-        return ResponseEntity.ok(service.buscarPorId(id));
+    public ResponseEntity<MedicamentoResponseDTO> detalhar(@PathVariable Long id) {
+        return ResponseEntity.ok(service.detalharMedicamento(id));
     }
 
     @PostMapping

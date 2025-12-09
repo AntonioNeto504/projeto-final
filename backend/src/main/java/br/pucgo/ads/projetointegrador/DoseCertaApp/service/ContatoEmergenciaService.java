@@ -1,11 +1,11 @@
 package br.pucgo.ads.projetointegrador.DoseCertaApp.service;
 
-
-
+import br.pucgo.ads.projetointegrador.DoseCertaApp.dto.ContatoEmergenciaDTO;
 import br.pucgo.ads.projetointegrador.DoseCertaApp.model.ContatoEmergencia;
 import br.pucgo.ads.projetointegrador.DoseCertaApp.repository.ContatoEmergenciaRepository;
 import br.pucgo.ads.projetointegrador.plataforma.entity.User;
 import br.pucgo.ads.projetointegrador.plataforma.repository.UserRepository;
+
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,56 +24,84 @@ public class ContatoEmergenciaService {
         this.usuarioRepository = usuarioRepository;
     }
 
-    // Lista todos os contatos de um usuário
+    // ======================
+    // LISTAR POR USUÁRIO
+    // ======================
     public List<ContatoEmergencia> listarPorUsuario(Long usuarioId) {
         return repository.findByUsuarioId(usuarioId);
     }
 
-    // Busca contato por ID
+    // ======================
+    // BUSCAR POR ID
+    // ======================
     public ContatoEmergencia buscarPorId(Long id) {
         return repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Contato não encontrado!"));
     }
 
-    // Cria um novo contato
+    // ======================
+    // CRIAR USANDO DTO (RECOMENDADO)
+    // ======================
     @Transactional
-    public ContatoEmergencia criar(Long usuarioId, String nome, String telefone, String relacao) {
-        User usuario = usuarioRepository.findById(usuarioId)
+    public ContatoEmergencia criar(ContatoEmergenciaDTO dto) {
+
+        // 1️⃣ Valida usuário
+        User usuario = usuarioRepository.findById(dto.getUsuarioId())
                 .orElseThrow(() -> new EntityNotFoundException("Usuário não encontrado!"));
 
-        // Evita duplicidade de telefone para o mesmo usuário
-        boolean existeTelefone = repository.existsByUsuarioIdAndTelefone(usuarioId, telefone);
+        // 2️⃣ Evita duplicidade de telefone
+        boolean existeTelefone = repository.existsByUsuarioIdAndTelefone(dto.getUsuarioId(), dto.getTelefone());
         if (existeTelefone) {
             throw new IllegalArgumentException("Já existe um contato com este telefone para o usuário.");
         }
 
+        // 3️⃣ Criar entidade
         ContatoEmergencia contato = new ContatoEmergencia();
-        contato.setUsuario(usuario);       // ✅ Referência ao usuário
-        contato.setNome(nome);             // Nome do contato
-        contato.setTelefone(telefone);     // Telefone
-        contato.setRelacao(relacao);       // Relação (ex.: mãe, amigo)
+        contato.setUsuario(usuario);
+        contato.setNome(dto.getNome());
+        contato.setTelefone(dto.getTelefone());
+        contato.setRelacao(dto.getRelacao());
 
+        // 4️⃣ Persistir
         return repository.save(contato);
     }
 
-    // Exclui contato
+    // ======================
+    // ATUALIZAR USANDO DTO (NOVO MÉTODO)
+    // ======================
+    @Transactional
+    public ContatoEmergencia atualizar(Long id, ContatoEmergenciaDTO dto) {
+
+        // 1️⃣ Busca o contato existente
+        ContatoEmergencia contato = repository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Contato não encontrado!"));
+
+        Long usuarioId = contato.getUsuario().getId(); // 🔥 Sempre use o do banco
+
+        // 2️⃣ Verifica duplicidade de telefone (somente se for alterar)
+        boolean telefoneJaExiste = repository.existsByUsuarioIdAndTelefone(usuarioId, dto.getTelefone());
+
+        if (telefoneJaExiste && !contato.getTelefone().equals(dto.getTelefone())) {
+            throw new IllegalArgumentException("Já existe outro contato com este telefone para o usuário.");
+        }
+
+        // 3️⃣ Atualiza dados
+        contato.setNome(dto.getNome());
+        contato.setTelefone(dto.getTelefone());
+        contato.setRelacao(dto.getRelacao());
+
+        // 4️⃣ Salva
+        return repository.save(contato);
+    }
+
+
+    // ======================
+    // EXCLUIR
+    // ======================
     @Transactional
     public void excluir(Long id) {
         ContatoEmergencia contato = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Contato não encontrado!"));
         repository.delete(contato);
-    }
-
-    // Atualiza contato
-    @Transactional
-    public ContatoEmergencia atualizar(Long id, String nome, String telefone, String relacao) {
-        ContatoEmergencia contato = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Contato não encontrado!"));
-
-        contato.setNome(nome);
-        contato.setTelefone(telefone);
-        contato.setRelacao(relacao);
-
-        return repository.save(contato);
     }
 }
