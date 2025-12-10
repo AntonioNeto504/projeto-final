@@ -33,6 +33,11 @@ public class RegistroTomadaController {
                 .toList();
     }
 
+    @DeleteMapping("/usuario/{usuarioId}")
+    public ResponseEntity<Void> apagarHistorico(@PathVariable Long usuarioId) {
+        service.apagarHistorico(usuarioId);
+        return ResponseEntity.noContent().build();
+    }
 
     // *** ESTE É O ENDPOINT QUE O FRONT CHAMA ***
     @PostMapping

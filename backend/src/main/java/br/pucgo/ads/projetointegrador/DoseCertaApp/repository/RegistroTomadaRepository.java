@@ -27,4 +27,7 @@ public interface RegistroTomadaRepository extends JpaRepository<RegistroTomada, 
 
     // Lista do dia ordenada por horário previsto
     List<RegistroTomada> findByMedicamentoIdAndDataPrevistaOrderByHorarioPrevistoAsc(Long medicamentoId, LocalDate dataPrevista);
+
+    void deleteByUsuarioId(Long usuarioId);
+
 }

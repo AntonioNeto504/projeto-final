@@ -14,6 +14,7 @@ import {
 
 import HomeIcon from "@mui/icons-material/Home";
 import ListIcon from "@mui/icons-material/List";
+import AddIcon from "@mui/icons-material/Add";
 
 import { useNavigate } from "react-router-dom";
 import { medicamentoApi } from "../api/medicamentoApi";
@@ -36,24 +37,22 @@ export default function HistoricoMedicamentosPage() {
   const carregar = async () => {
     if (!usuarioId) return;
 
-    // Agora busca o histórico REAL da tabela registros_tomada
     const registros = await medicamentoApi.listarHistorico(usuarioId);
 
     const eventos = registros
-  .filter((r) => r.horarioRealTomado) // já vem só os tomados do backend
-  .map((r) => ({
-    id: r.id,
-    medicamentoNome: r.medicamentoNome,
-    horarioPrevisto: r.horarioPrevisto,
-    horarioRealTomado: r.horarioRealTomado,
-    dataPrevista: r.dataPrevista,
-  }))
-  .sort((a, b) => {
-    const dt1 = new Date(`${a.dataPrevista}T${a.horarioRealTomado}`);
-    const dt2 = new Date(`${b.dataPrevista}T${b.horarioRealTomado}`);
-    return dt2.getTime() - dt1.getTime();
-  });
-
+      .filter((r) => r.horarioRealTomado)
+      .map((r) => ({
+        id: r.id,
+        medicamentoNome: r.medicamentoNome,
+        horarioPrevisto: r.horarioPrevisto,
+        horarioRealTomado: r.horarioRealTomado,
+        dataPrevista: r.dataPrevista,
+      }))
+      .sort((a, b) => {
+        const dt1 = new Date(`${a.dataPrevista}T${a.horarioRealTomado}`);
+        const dt2 = new Date(`${b.dataPrevista}T${b.horarioRealTomado}`);
+        return dt2.getTime() - dt1.getTime();
+      });
 
     setHistorico(eventos);
   };
@@ -88,9 +87,8 @@ export default function HistoricoMedicamentosPage() {
               <Button
                 variant="contained"
                 startIcon={<HomeIcon />}
-                onClick={() => navigate('/home')}
-                sx={{ fontSize: 16, padding: "8px 12px", fontWeight: "normal" }}
                 onClick={() => navigate("/home")}
+                sx={{ fontSize: 16, padding: "8px 12px", fontWeight: "normal" }}
               >
                 Home
               </Button>
@@ -99,7 +97,6 @@ export default function HistoricoMedicamentosPage() {
                 variant="outlined"
                 startIcon={<ListIcon />}
                 onClick={() => navigate("/medicamentos/lista")}
-                onClick={() => navigate('/medicamentos/lista')}
                 sx={{ fontSize: 16, padding: "8px 12px", fontWeight: "normal" }}
               >
                 Lista
@@ -109,130 +106,80 @@ export default function HistoricoMedicamentosPage() {
                 variant="contained"
                 color="success"
                 startIcon={<AddIcon />}
-                onClick={() => navigate('/medicamentos/cadastro')}
+                onClick={() => navigate("/medicamentos/cadastro")}
                 sx={{ fontSize: 16, padding: "8px 12px", fontWeight: "normal" }}
               >
                 Cadastrar
-              </Button>
-
-              {/* Botão para apagar todo o histórico (segue mesmo padrão visual) */}
-              <Button
-                variant="outlined"
-                color="error"
-                startIcon={<DeleteIcon />}
-                onClick={handleClearAll}
-                sx={{ fontSize: 16, padding: "8px 12px", fontWeight: "normal" }}
-              >
-                Apagar Histórico
               </Button>
             </Stack>
           </Stack>
 
           {/* LISTAGEM */}
           {historico.length === 0 ? (
-            <Typography
-              sx={{
-                textAlign: "center",
-                fontSize: 18,
-                color: "text.secondary",
-                py: 5,
-              }}
-            >
-              Nenhum medicamento tomado registrado ✨
-            </Typography>
-          ) : (
-            <Stack spacing={3}>
-              {historico.map((h) => {
+            <Box sx={{ textAlign: "center", py: 8 }}>
+              <Typography sx={{ fontSize: 20, mb: 2 }}>
+                Nenhum medicamento tomado registrado ✨
+              </Typography>
 
-                return (
-                  <Box key={h.id} sx={{ p: 2, borderRadius: 2, boxShadow: 1 }}>
-                    <Stack
-                      direction="row"
-                      alignItems="center"
-                      justifyContent="space-between"
-                    >
-                      <Typography sx={{ fontSize: 20, fontWeight: 700 }}>
-                        {h.medicamentoNome}
-                      </Typography>
-
-                      <Chip label="Tomado" color="success" />
-                    </Stack>
-
-                    <Divider sx={{ my: 1 }} />
-
-                    <Typography sx={{ fontSize: 16 }}>
-                      ⏰ Horário previsto: <strong>{h.horarioPrevisto}</strong>
-                    </Typography>
-
-                    <Typography sx={{ fontSize: 16, color: "text.secondary" }}>
-                      ✔ Tomado em:{" "}
-                      <strong>
-                        {h.dataPrevista} às {h.horarioRealTomado}
-                      </strong>
-                    </Typography>
-                  </Box>
-                );
-              })}
-            </Stack>
-          {hist.length === 0 ? (
-            <Box sx={{ textAlign: 'center', py: 8 }}>
-              <Typography sx={{ fontSize: 20, mb: 2 }}>Ainda não há registros</Typography>
-              <Typography sx={{ fontSize: 16, color: 'text.secondary', mb: 3 }}>
-                Quando você marcar um medicamento como tomado, o registro aparecerá aqui.
+              <Typography
+                sx={{ fontSize: 16, color: "text.secondary", mb: 3 }}
+              >
+                Quando você marcar um medicamento como tomado, o registro
+                aparecerá aqui.
               </Typography>
 
               <Stack direction="row" spacing={2} justifyContent="center">
-                <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/medicamentos/cadastro')} sx={{ fontSize: 16, padding: "8px 12px", fontWeight: "normal" }}
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => navigate("/medicamentos/cadastro")}
                 >
                   Cadastrar Medicamento
                 </Button>
 
-                <Button variant="outlined" startIcon={<ListIcon />} onClick={() => navigate('/medicamentos/lista')} sx={{ fontSize: 16, padding: "8px 12px", fontWeight: "normal" }}
+                <Button
+                  variant="outlined"
+                  startIcon={<ListIcon />}
+                  onClick={() => navigate("/medicamentos/lista")}
                 >
                   Ver Lista
                 </Button>
               </Stack>
             </Box>
           ) : (
-            <List>
-              {hist.map((h) => (
-                <React.Fragment key={h.id}>
-                  <ListItem sx={{ py: 2 }}>
-                    {/* Conteúdo principal */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2 }}>
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <ListItemText
-                          primary={<Typography sx={{ fontSize: 18, fontWeight: 700 }}>{h.nome}</Typography>}
-                          secondary={
-                            <Typography sx={{ fontSize: 16, color: 'text.secondary' }}>
-                              Tomado: <strong>{h.amountTaken}{h.tipo === 'liquido' ? ' ml' : ' unidade(s)'}</strong>
-                              {typeof h.horarioIndex === 'number' ? ` — Horário ${h.horarioIndex + 1}` : ''}
-                              {' — '}
-                              {new Date(h.takenAt).toLocaleString()}
-                            </Typography>
-                          }
-                        />
-                      </Box>
+            <Stack spacing={3}>
+              {historico.map((h) => (
+                <Box key={h.id} sx={{ p: 2, borderRadius: 2, boxShadow: 1 }}>
+                  <Stack
+                    direction="row"
+                    alignItems="center"
+                    justifyContent="space-between"
+                  >
+                    <Typography sx={{ fontSize: 20, fontWeight: 700 }}>
+                      {h.medicamentoNome}
+                    </Typography>
 
-                      {/* Botão de apagar por item (segue padrão dos outros botões) */}
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Button
-                          variant="outlined"
-                          color="error"
-                          startIcon={<DeleteIcon />}
-                          onClick={() => handleDeleteEntry(h.id)}
-                          sx={{ fontSize: 16, px: 2, minHeight: 48 }}
-                        >
-                          Apagar
-                        </Button>
-                      </Box>
-                    </Box>
-                  </ListItem>
+                    <Chip label="Tomado" color="success" />
+                  </Stack>
 
-                  <Divider />
-                </React.Fragment>
+                  <Divider sx={{ my: 1 }} />
+
+                  <Typography sx={{ fontSize: 16 }}>
+                    ⏰ Horário previsto:{" "}
+                    <strong>{h.horarioPrevisto}</strong>
+                  </Typography>
+
+                  <Typography
+                    sx={{ fontSize: 16, color: "text.secondary" }}
+                  >
+                    ✔ Tomado em:{" "}
+                    <strong>
+                      {h.dataPrevista} às {h.horarioRealTomado}
+                    </strong>
+                  </Typography>
+                </Box>
               ))}
-            </List>
+            </Stack>
           )}
         </CardContent>
       </Card>

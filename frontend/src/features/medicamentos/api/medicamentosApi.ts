@@ -1,25 +1,26 @@
 import http from "@/lib/http";
 
 export interface CreateMedicamentoPayload {
+  usuarioId: number;                // obrigatório
   totalFrasco?: number;
   quantidadeCartela?: number;
   doseDiaria: number;
-  tipoDosagem: string;   // <<< AQUI ESTÁ A CORREÇÃO
+  tipoDosagem: string;
   tarja: string;
-  horarios: { hora: string }[];
+  horarios: { horario: string }[];
+  contatoEmergenciaId?: number;     // opcional
 }
-
 
 export const medicamentosApi = {
   criar: async (
-    usuarioId: number,
-    anvisaId: number,
-    payload: CreateMedicamentoPayload
+    payload: CreateMedicamentoPayload,
+    anvisaId: number
   ) => {
     const { data } = await http.post(
-      `/api/medicamentos?usuarioId=${usuarioId}&anvisaId=${anvisaId}`,
+      `/api/medicamentos?anvisaId=${anvisaId}`,
       payload
     );
+
     return data;
   },
 };

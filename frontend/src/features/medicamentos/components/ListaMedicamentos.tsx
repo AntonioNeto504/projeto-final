@@ -97,7 +97,7 @@ export default function ListaMedicamentosPage() {
 
             <Stack direction="row" spacing={2}>
               <Button variant="outlined" onClick={() => navigate('/medicamentos/historico')}>Histórico</Button>
-              <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/medicamentos/cadastro')}>Novo</Button>
+              <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/medicamentos/cadastro')}>Cadastrar</Button>
             </Stack>
           </Stack>
 

@@ -2,7 +2,7 @@ package br.pucgo.ads.projetointegrador.DoseCertaApp.dto;
 
 import br.pucgo.ads.projetointegrador.DoseCertaApp.model.TarjaTipo;
 import jakarta.validation.constraints.NotNull;
-import java.time.LocalDate;
+
 import java.util.List;
 
 public class MedicamentoCreateDTO {
@@ -10,53 +10,42 @@ public class MedicamentoCreateDTO {
     @NotNull
     private Long usuarioId;
 
-    private String nome;
-    private String dosagemTipo;
-    private Double dosagemValor;
-    private Integer quantidadePorDose;
+    private String tipoDosagem;          // "mg" ou "ml"
+    private Integer doseDiaria;          // quantidade por dose
+    private Integer quantidadeCartela;   // comprimidos
+    private Double totalFrasco;          // ml
 
-    private LocalDate dataInicio;
-    private LocalDate dataFim;
+    private TarjaTipo tarja;             // PRETA / VERMELHA / AMARELA / SEM_TARJA
 
-    private TarjaTipo tarja;          // <<--- ALTERADO
-    private Boolean urgencia;
-    private Boolean avisarContato;
-    private Long contatoEmergenciaId;
+    // AGORA SUPORTA VÁRIOS CONTATOS
+    private List<Long> contatosEmergenciaIds;
 
-    private List<HorarioDTO> horarios;
+    private List<HorarioDTO> horarios;   // [{ "horario": "08:00" }]
+
+    // GETTERS / SETTERS
 
     public Long getUsuarioId() { return usuarioId; }
     public void setUsuarioId(Long usuarioId) { this.usuarioId = usuarioId; }
 
-    public String getNome() { return nome; }
-    public void setNome(String nome) { this.nome = nome; }
+    public String getTipoDosagem() { return tipoDosagem; }
+    public void setTipoDosagem(String tipoDosagem) { this.tipoDosagem = tipoDosagem; }
 
-    public String getDosagemTipo() { return dosagemTipo; }
-    public void setDosagemTipo(String dosagemTipo) { this.dosagemTipo = dosagemTipo; }
+    public Integer getDoseDiaria() { return doseDiaria; }
+    public void setDoseDiaria(Integer doseDiaria) { this.doseDiaria = doseDiaria; }
 
-    public Double getDosagemValor() { return dosagemValor; }
-    public void setDosagemValor(Double dosagemValor) { this.dosagemValor = dosagemValor; }
+    public Integer getQuantidadeCartela() { return quantidadeCartela; }
+    public void setQuantidadeCartela(Integer quantidadeCartela) { this.quantidadeCartela = quantidadeCartela; }
 
-    public Integer getQuantidadePorDose() { return quantidadePorDose; }
-    public void setQuantidadePorDose(Integer quantidadePorDose) { this.quantidadePorDose = quantidadePorDose; }
+    public Double getTotalFrasco() { return totalFrasco; }
+    public void setTotalFrasco(Double totalFrasco) { this.totalFrasco = totalFrasco; }
 
-    public LocalDate getDataInicio() { return dataInicio; }
-    public void setDataInicio(LocalDate dataInicio) { this.dataInicio = dataInicio; }
-
-    public LocalDate getDataFim() { return dataFim; }
-    public void setDataFim(LocalDate dataFim) { this.dataFim = dataFim; }
-
-    public TarjaTipo getTarja() { return tarja; }             // <<--- NOVO
+    public TarjaTipo getTarja() { return tarja; }
     public void setTarja(TarjaTipo tarja) { this.tarja = tarja; }
 
-    public Boolean getUrgencia() { return urgencia; }
-    public void setUrgencia(Boolean urgencia) { this.urgencia = urgencia; }
-
-    public Boolean getAvisarContato() { return avisarContato; }
-    public void setAvisarContato(Boolean avisarContato) { this.avisarContato = avisarContato; }
-
-    public Long getContatoEmergenciaId() { return contatoEmergenciaId; }
-    public void setContatoEmergenciaId(Long contatoEmergenciaId) { this.contatoEmergenciaId = contatoEmergenciaId; }
+    public List<Long> getContatosEmergenciaIds() { return contatosEmergenciaIds; }
+    public void setContatosEmergenciaIds(List<Long> contatosEmergenciaIds) {
+        this.contatosEmergenciaIds = contatosEmergenciaIds;
+    }
 
     public List<HorarioDTO> getHorarios() { return horarios; }
     public void setHorarios(List<HorarioDTO> horarios) { this.horarios = horarios; }

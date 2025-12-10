@@ -44,6 +44,19 @@ import ContatoSelector from "../components/ContatoSelector";
 interface Props {
   medicamentoEditar?: Medicamento | null;
 }
+const sanitizePhone = (value: string) => {
+  if (!value) return "";
+  return value.replace(/\D/g, "").slice(0, 11); // permite até 11 dígitos
+};
+
+const formatPhone = (digits: string) => {
+  // Remove não dígitos
+  const v = digits.replace(/\D/g, "").slice(0, 11);
+
+  if (v.length <= 2) return `(${v}`;
+  if (v.length <= 7) return `(${v.slice(0, 2)}) ${v.slice(2)}`;
+  return `(${v.slice(0, 2)}) ${v.slice(2, 7)}-${v.slice(7)}`;
+};
 
 /* Helpers de layout */
 const ResponsiveRow: React.FC<{
@@ -284,8 +297,9 @@ const CadastroMedicamento: React.FC<Props> = ({ medicamentoEditar }) => {
       // converte para number de forma segura
       const numeric = Number(value);
       setForm((prev) => {
-        return { ...(prev as Medicamento), contatoEmergenciaId: numeric } as Medicamento;
+        return { ...(prev as Medicamento), contatoEmergenciaId: numeric };
       });
+
       return;
     }
 
@@ -315,32 +329,36 @@ const CadastroMedicamento: React.FC<Props> = ({ medicamentoEditar }) => {
     return true;
   };
 
-  function montarPayload() {
-    const horarios = (form.horarios || [])
-      .map(h => (typeof h === "string" ? h.trim() : ""))
-      .filter(h => h)
-      .map(h => ({ horario: h }));  // <<< O backend exige este nome
+    function montarPayload(usuarioId: number) {
+      const horarios = (form.horarios || [])
+        .map(h => (typeof h === "string" ? h.trim() : ""))
+        .filter(h => h)
+        .map(h => ({ horario: h }));
 
-    const tarja = form.tarja ? form.tarja.toUpperCase() : "SEM_TARJA";
+      const tarja = form.tarja ? form.tarja.toUpperCase() : "SEM_TARJA";
 
-    if (form.tipo === "liquido") {
-      return {
-        totalFrasco: form.quantidadeTotal,
-        doseDiaria: form.mlPorDose,
-        tipoDosagem: "ml",
+      const base = {
+        usuarioId,
+        doseDiaria: form.tipo === "liquido" ? form.mlPorDose : form.unidadePorDose,
+        tipoDosagem: form.tipo === "liquido" ? "ml" : "mg",
         tarja,
         horarios,
+        contatosEmergenciaIds: (form as any).contatosEmergenciaIds ?? [], // <<<<<< OBRIGATÓRIO
+      };
+
+      if (form.tipo === "liquido") {
+        return {
+          ...base,
+          totalFrasco: form.quantidadeTotal,
+        };
+      }
+
+      return {
+        ...base,
+        quantidadeCartela: form.quantidadeTotal,
       };
     }
 
-    return {
-      quantidadeCartela: form.quantidadeTotal,
-      doseDiaria: form.unidadePorDose,
-      tipoDosagem: "mg",
-      tarja,
-      horarios,
-    };
-  }
 
 
 
@@ -368,17 +386,32 @@ const CadastroMedicamento: React.FC<Props> = ({ medicamentoEditar }) => {
       alert("Selecione um medicamento da lista da ANVISA.");
       return;
     }
+if (form.tarja === "preta") {
+  const selecionados = (form as any).contatosEmergenciaIds ?? [];
 
-    const payload = montarPayload();
-    console.log(">>> PAYLOAD A ENVIAR:", JSON.stringify(payload, null, 2));
-    try {
-      await medicamentosApi.criar(usuarioId, form.anvisaId, payload);
-      alert("Medicamento cadastrado com sucesso!");
-      navigate("/medicamentos/lista");
-    } catch (err) {
-      console.error(err);
-      alert("Erro ao cadastrar o medicamento.");
-    }
+  if (!Array.isArray(selecionados) || selecionados.length === 0) {
+    alert("Medicamentos de tarja PRETA exigem ao menos um contato de emergência.\nCadastre ou selecione um contato.");
+    return;
+  }
+}
+
+      const payload = montarPayload(usuarioId);  // usa o usuarioId REAL
+      console.log(">>> PAYLOAD A ENVIAR:", JSON.stringify(payload, null, 2));
+
+      try {
+        await medicamentosApi.criar(
+          payload,            // body -> MedicamentoCreateDTO
+          form.anvisaId!,     // anvisaId via query param
+        );
+
+        alert("Medicamento cadastrado com sucesso!");
+        navigate("/medicamentos/lista");
+
+      } catch (err) {
+        console.error(err);
+        alert("Erro ao cadastrar medicamento.");
+      }
+
   };
 
   const quantidadePorHorario = useMemo(() => {
@@ -480,7 +513,7 @@ const CadastroMedicamento: React.FC<Props> = ({ medicamentoEditar }) => {
               <Stack spacing={1} sx={{ mt: 1 }}>
                 {/* AUTOCOMPLETE ANVISA */}
                 <Autocomplete
-                  options={medicamentosAnvisa.slice(0, 9)}
+                  options={medicamentosAnvisa}
                   getOptionLabel={(opt) => opt.nomeProduto}
                   onChange={(_, selected) => {
                     if (selected) {
@@ -712,110 +745,145 @@ const CadastroMedicamento: React.FC<Props> = ({ medicamentoEditar }) => {
 
                 <Divider />
 
-                <ResponsiveRow gap={2} sx={{ alignItems: "center", mb: 2 }}>
-                  <Box sx={{ flex: 1, pr: { xs: 0, sm: 2 } }}>
-                    <Typography sx={{ fontSize: 16, fontWeight: 600, mb: 1 }}>Tarja</Typography>
+                  <ResponsiveRow gap={2} sx={{ alignItems: "center", mb: 2 }}>
+  {/* TARJA */}
+  <Box sx={{ flex: 1, pr: { xs: 0, sm: 2 } }}>
+    <Typography sx={{ fontSize: 16, fontWeight: 600, mb: 1 }}>
+      Tarja
+    </Typography>
 
-                    <FormControl fullWidth size="small" margin="dense" sx={{ ...selectBoxSx }}>
-                      <Select
-                        labelId="tarja-label"
-                        name="tarja"
-                        value={form.tarja}
-                        onChange={handleInputChange as any}
-                        sx={{ "& .MuiSelect-select": { fontSize: 16 } }}
-                      >
-                        <MenuItem value="sem_tarja" sx={selectMenuItemSx}>
-                          Comum
-                        </MenuItem>
-                        <MenuItem value="amarela" sx={selectMenuItemSx}>
-                          Amarela
-                        </MenuItem>
-                        <MenuItem value="vermelha" sx={selectMenuItemSx}>
-                          Vermelha
-                        </MenuItem>
-                        <MenuItem value="preta" sx={selectMenuItemSx}>
-                          Preta
-                        </MenuItem>
-                      </Select>
-                    </FormControl>
-                  </Box>
+    <FormControl fullWidth size="small" margin="dense" sx={{ ...selectBoxSx }}>
+      <Select
+        labelId="tarja-label"
+        name="tarja"
+        value={form.tarja}
+        onChange={handleInputChange as any}
+        sx={{ "& .MuiSelect-select": { fontSize: 16 } }}
+      >
+        <MenuItem value="sem_tarja" sx={selectMenuItemSx}>Comum</MenuItem>
+        <MenuItem value="amarela" sx={selectMenuItemSx}>Amarela</MenuItem>
+        <MenuItem value="vermelha" sx={selectMenuItemSx}>Vermelha</MenuItem>
+        <MenuItem value="preta" sx={selectMenuItemSx}>Preta</MenuItem>
+      </Select>
+    </FormControl>
+  </Box>
 
-                  <Box sx={{ flex: 1, pl: { xs: 0, sm: 2 }, display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
-                    <Typography sx={{ fontSize: 16, fontWeight: 600, mb: 1, textAlign: { xs: "left", sm: "right" }, alignSelf: "start" }}>
-                      Deseja vincular contato de emergência?
-                    </Typography>
+  {/* CONTATOS DE EMERGÊNCIA */}
+  <Box sx={{ flex: 1, pl: { xs: 0, sm: 2 } }}>
+    <Typography sx={{ fontSize: 16, fontWeight: 600, mb: 1 }}>
+      Deseja vincular contato de emergência?
+    </Typography>
 
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 2, width: "100%" }}>
-                      <FormControl fullWidth size="small" margin="dense" sx={{ ...selectBoxSx }}>
-                        <Select
-                          labelId="contato-emergencia-label"
-                          name="contatoEmergenciaId"
-                          value={(form as any).contatoEmergenciaId ?? ""}
-                          onChange={handleInputChange as any}
-                          displayEmpty
-                          renderValue={(selected) => {
-                            if (!selected)
-                              return (
-                                <span style={{ color: "#555", fontSize: 18 }}>
-                                  Não vincular
-                                </span>
-                              );
+    <Box sx={{ display: "flex", alignItems: "center", gap: 2, width: "100%" }}>
+      <FormControl fullWidth size="small" margin="dense" sx={{ ...selectBoxSx }}>
+        <Select
+          labelId="contato-emergencia-label"
+          name="contatosEmergenciaIds"
+          multiple
+          value={(form as any).contatosEmergenciaIds ?? []}
+          onChange={(event) => {
+            let value = event.target.value;
 
-                            const c = contatos.find((x) => x.id === Number(selected));
-                            return c ? `${c.nome} — ${c.telefone}` : String(selected);
-                          }}
-                          sx={{ "& .MuiSelect-select": { fontSize: 18 }, maxWidth: "300px" }}
-                        >
-                          <MenuItem value="">
-                            <em style={{ fontSize: 16 }}>Não vincular</em>
-                          </MenuItem>
+            // botão "Cadastrar novo"
+            if (value.includes("new")) {
+              value = value.filter((v: any) => v !== "new");
+              setNovoContato({ nome: "", telefone: "", relacao: "" });
+              setEditingContatoId(null);
+              setOpenContatoDialog(true);
+            }
 
-                          {contatos.map((c) => (
-                            <MenuItem key={c.id} value={c.id} sx={{ fontSize: 18 }}>
-                              {c.nome} — {c.telefone} ({c.relacao ?? "—"})
-                            </MenuItem>
-                          ))}
+            setForm((prev) => ({
+              ...prev,
+              contatosEmergenciaIds: value
+            }));
+          }}
+          displayEmpty
+          renderValue={(selected) => {
+            const ids = Array.isArray(selected) ? selected : [];
 
-                          <MenuItem value="new" sx={{ fontSize: 16 }}>
-                            ➕ Cadastrar novo contato
-                          </MenuItem>
-                        </Select>
-                      </FormControl>
+            if (ids.length === 0) {
+              return <span style={{ color: "#555", fontSize: 18 }}>Não vincular</span>;
+            }
 
-                      {!((form as any).contatoEmergenciaId) ? (
-                        <Button
-                          variant="outlined"
-                          onClick={() => {
-                            setNovoContato({ nome: "", telefone: "", relacao: "" });
-                            setEditingContatoId(null);
-                            setOpenContatoDialog(true);
-                          }}
-                          sx={{ borderRadius: 1, px: 3, textTransform: "none", fontSize: 14, whiteSpace: "nowrap" }}
-                        >
-                          Cadastrar
-                        </Button>
-                      ) : (
-                        <Box sx={{ display: "flex", gap: 0 }}>
-                          <IconButton
-                            aria-label="editar contato"
-                            onClick={() => abrirEdicaoContato(Number((form as any).contatoEmergenciaId))}
-                            sx={{ borderRadius: 20 }}
-                          >
-                            <EditIcon fontSize="small" />
-                          </IconButton>
+            if (ids.length === 1) {
+              const c = contatos.find((x) => x.id === ids[0]);
+              return c ? `${c.nome} — ${c.telefone}` : ids[0];
+            }
 
-                          <IconButton
-                            aria-label="excluir contato"
-                            onClick={() => handleDeleteContact(Number((form as any).contatoEmergenciaId))}
-                            sx={{ borderRadius: 20 }}
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Box>
-                      )}
-                    </Box>
-                  </Box>
-                </ResponsiveRow>
+            return `${ids.length} contatos selecionados`;
+          }}
+          sx={{ "& .MuiSelect-select": { fontSize: 18 }, maxWidth: "100%" }}
+        >
+          {/* NÃO VINCULAR */}
+          <MenuItem value="">
+            <em style={{ fontSize: 16 }}>Não vincular</em>
+          </MenuItem>
+
+          {/* LISTA DE CONTATOS COM CHECKBOX */}
+          {contatos.map((c) => (
+            <MenuItem key={c.id} value={c.id} sx={{ fontSize: 18 }}>
+              <input
+                type="checkbox"
+                checked={((form as any).contatosEmergenciaIds ?? []).includes(c.id)}
+                readOnly
+                style={{ marginRight: 8 }}
+              />
+              {c.nome} — {c.telefone} ({c.relacao ?? "—"})
+            </MenuItem>
+          ))}
+
+          {/* CADASTRAR NOVO */}
+          <MenuItem value="new" sx={{ fontSize: 16 }}>
+            ➕ Cadastrar novo contato
+          </MenuItem>
+        </Select>
+      </FormControl>
+
+      {/* BOTÃO — VINCULAR TODOS */}
+      <Button
+        variant="outlined"
+        onClick={() => {
+          const ids = contatos.map((c) => c.id);
+          setForm((prev) => ({
+            ...prev,
+            contatosEmergenciaIds: ids
+          }));
+        }}
+        sx={{
+          borderRadius: 1,
+          px: 3,
+          textTransform: "none",
+          fontSize: 14,
+          whiteSpace: "nowrap",
+        }}
+      >
+        Vincular todos
+      </Button>
+
+      {/* BOTÃO CADASTRAR */}
+      <Button
+        variant="outlined"
+        onClick={() => {
+          setNovoContato({ nome: "", telefone: "", relacao: "" });
+          setEditingContatoId(null);
+          setOpenContatoDialog(true);
+        }}
+        sx={{
+          borderRadius: 1,
+          px: 3,
+          textTransform: "none",
+          fontSize: 14,
+          whiteSpace: "nowrap",
+        }}
+      >
+        Cadastrar
+      </Button>
+    </Box>
+  </Box>
+</ResponsiveRow>
+
+
+
 
                 <Divider />
 
@@ -860,12 +928,16 @@ const CadastroMedicamento: React.FC<Props> = ({ medicamentoEditar }) => {
 
             <TextField
               label="Telefone"
-              value={novoContato.telefone}
-              onChange={(e) => setNovoContato((s) => ({ ...s, telefone: e.target.value }))}
+              value={formatPhone(novoContato.telefone)}   // mostra formatado no input
+              onChange={(e) => {
+                const digits = sanitizePhone(e.target.value); // salva só números
+                setNovoContato((s) => ({ ...s, telefone: digits }));
+              }}
               fullWidth
               size="small"
               InputProps={{ style: { fontSize: 18 } }}
             />
+
 
             <TextField
               label="Relação (ex.: Filho)"

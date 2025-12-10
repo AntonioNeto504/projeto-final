@@ -1,25 +1,18 @@
 package br.pucgo.ads.projetointegrador.DoseCertaApp.service;
 
-import br.pucgo.ads.projetointegrador.DoseCertaApp.dto.MedicamentoResponseDTO;
-import br.pucgo.ads.projetointegrador.DoseCertaApp.model.ContatoEmergencia;
-import br.pucgo.ads.projetointegrador.DoseCertaApp.model.Medicamento;
-import br.pucgo.ads.projetointegrador.DoseCertaApp.model.MedicamentoAnvisa;
-import br.pucgo.ads.projetointegrador.DoseCertaApp.model.MedicamentoHorario;
-import br.pucgo.ads.projetointegrador.DoseCertaApp.model.RegistroTomada;
-import br.pucgo.ads.projetointegrador.DoseCertaApp.model.TarjaTipo;
-import br.pucgo.ads.projetointegrador.DoseCertaApp.repository.ContatoEmergenciaRepository;
-import br.pucgo.ads.projetointegrador.DoseCertaApp.repository.MedicamentoAnvisaRepository;
-import br.pucgo.ads.projetointegrador.DoseCertaApp.repository.MedicamentoHorarioRepository;
-import br.pucgo.ads.projetointegrador.DoseCertaApp.repository.MedicamentoRepository;
-import br.pucgo.ads.projetointegrador.DoseCertaApp.repository.RegistroTomadaRepository;
+import br.pucgo.ads.projetointegrador.DoseCertaApp.dto.*;
+import br.pucgo.ads.projetointegrador.DoseCertaApp.model.*;
+import br.pucgo.ads.projetointegrador.DoseCertaApp.repository.*;
 import br.pucgo.ads.projetointegrador.plataforma.entity.User;
 import br.pucgo.ads.projetointegrador.plataforma.repository.UserRepository;
+
 import jakarta.persistence.EntityNotFoundException;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,28 +22,29 @@ public class MedicamentoService {
     private final MedicamentoRepository medicamentoRepository;
     private final MedicamentoHorarioRepository horarioRepository;
     private final RegistroTomadaRepository registroRepository;
-
     private final UserRepository userRepository;
     private final ContatoEmergenciaRepository contatoRepository;
     private final MedicamentoAnvisaRepository anvisaRepository;
 
-    public MedicamentoService(MedicamentoRepository medicamentoRepository,
-                              MedicamentoHorarioRepository horarioRepository,
-                              RegistroTomadaRepository registroRepository,
-                              UserRepository userRepository,
-                              ContatoEmergenciaRepository contatoRepository,
-                              MedicamentoAnvisaRepository anvisaRepository) {
-
+    public MedicamentoService(
+            MedicamentoRepository medicamentoRepository,
+            MedicamentoHorarioRepository horarioRepository,
+            RegistroTomadaRepository registroRepository,
+            UserRepository userRepository,
+            ContatoEmergenciaRepository contatoRepository,
+            MedicamentoAnvisaRepository anvisaRepository
+    ) {
         this.medicamentoRepository = medicamentoRepository;
         this.horarioRepository = horarioRepository;
         this.registroRepository = registroRepository;
-
         this.userRepository = userRepository;
         this.contatoRepository = contatoRepository;
         this.anvisaRepository = anvisaRepository;
     }
 
-    // ===================== LISTAGEM =====================
+    // ===========================================================
+    // LISTAGEM
+    // ===========================================================
     public List<Medicamento> listarTodos() {
         return medicamentoRepository.findAll();
     }
@@ -60,7 +54,10 @@ public class MedicamentoService {
         return medicamentoRepository.findByUsuarioId(usuarioId);
     }
 
-    // ===================== DETALHAMENTO COM HORÁRIOS + REGISTRO =====================
+
+    // ===========================================================
+    // DETALHAMENTO
+    // ===========================================================
     public MedicamentoResponseDTO detalharMedicamento(Long medicamentoId) {
 
         Medicamento medicamento = medicamentoRepository.findById(medicamentoId)
@@ -78,169 +75,169 @@ public class MedicamentoService {
         return new MedicamentoResponseDTO(medicamento, horarios, registrosDoDia);
     }
 
-    // ===================== CADASTRAR =====================
+
+    // ===========================================================
+    // CADASTRAR VIA DTO
+    // ===========================================================
     @Transactional
-    public Medicamento salvar(Medicamento medicamento, Long usuarioId, Long contatoId, Long anvisaId) {
+    public Medicamento salvarFromDTO(MedicamentoCreateDTO dto, Long anvisaId) {
 
-        User usuario = validarUsuario(usuarioId);
+        User usuario = validarUsuario(dto.getUsuarioId());
 
-        if (anvisaId == null) {
-            throw new IllegalArgumentException("É necessário informar o anvisaId");
-        }
-
-        MedicamentoAnvisa anvisa = anvisaRepository.findById(anvisaId)
-                .orElseThrow(() -> new EntityNotFoundException("Medicamento ANVISA não encontrado!"));
-        medicamento.setMedicamentoAnvisa(anvisa);
-
-        boolean existe = medicamentoRepository.existsByUsuarioIdAndMedicamentoAnvisaIdAndContatarEmergenciaFalse(
-                usuarioId, anvisaId
-        );
-        if (existe) {
-            throw new IllegalArgumentException("Já existe um medicamento deste tipo em uso.");
-        }
-
+        Medicamento medicamento = new Medicamento();
         medicamento.setUsuario(usuario);
 
-        if (contatoId != null) {
-            contatoRepository.findById(contatoId)
-                    .orElseThrow(() -> new EntityNotFoundException("Contato de emergência não encontrado!"));
+        // ANVISA
+        MedicamentoAnvisa anvisa = anvisaRepository.findById(anvisaId)
+                .orElseThrow(() -> new EntityNotFoundException("Medicamento ANVISA não encontrado!"));
+
+        medicamento.setMedicamentoAnvisa(anvisa);
+
+        medicamento.setTipoDosagem(dto.getTipoDosagem());
+        medicamento.setDoseDiaria(dto.getDoseDiaria());
+
+        if ("mg".equals(dto.getTipoDosagem()))
+            medicamento.setQuantidadeCartela(dto.getQuantidadeCartela());
+        else
+            medicamento.setTotalFrasco(dto.getTotalFrasco());
+
+        medicamento.setTarja(dto.getTarja());
+
+        // CONTATOS
+        if (dto.getTarja() == TarjaTipo.PRETA &&
+                (dto.getContatosEmergenciaIds() == null || dto.getContatosEmergenciaIds().isEmpty())) {
+            throw new IllegalArgumentException("Tarja preta exige ao menos 1 contato de emergência.");
         }
 
-        if (medicamento.getTarja() == TarjaTipo.PRETA) {
-            medicamento.setContatarEmergencia(true);
+        List<ContatoEmergencia> contatos = dto.getContatosEmergenciaIds() != null
+                ? dto.getContatosEmergenciaIds().stream()
+                .map(id -> contatoRepository.findById(id)
+                        .orElseThrow(() -> new EntityNotFoundException("Contato não encontrado: " + id)))
+                .toList()
+                : List.of();
+
+        medicamento.setContatosEmergencia(contatos);
+        medicamento.setContatarEmergencia(!contatos.isEmpty());
+
+        // HORÁRIOS
+        if (dto.getHorarios() != null) {
+            List<MedicamentoHorario> horarios = dto.getHorarios().stream()
+                    .map(h -> new MedicamentoHorario(medicamento, h.getHorario()))
+                    .toList();
+            medicamento.setHorarios(horarios);
         }
 
-        int dias = medicamento.calcularDias();
         medicamento.setDataInicio(LocalDate.now());
-        medicamento.setDataFim(LocalDate.now().plusDays(dias - 1));
-
-        if (medicamento.getHorarios() != null) {
-            medicamento.getHorarios().forEach(h -> {
-                h.setMedicamento(medicamento);
-
-                // se for nulo (por payload vazio), evite gravar objeto vazio:
-                if (h.getHorario() == null || h.getHorario().isBlank()) {
-                    // opcional: lançar erro para o front ou pular
-                    throw new IllegalArgumentException("Cada horário deve conter o campo 'horario'.");
-                }
-
-                if (h.getDataUltimaAtualizacao() == null) {
-                    h.setDataUltimaAtualizacao(LocalDate.now());
-                }
-            });
-        }
-
+        medicamento.setDataFim(LocalDate.now().plusDays(medicamento.calcularDias() - 1));
 
         return medicamentoRepository.save(medicamento);
     }
 
-    // ===================== ATUALIZAR =====================
-    @Transactional
-    public Medicamento atualizar(Long id, Medicamento atualizado, Long contatoId, Long anvisaId) {
 
-        Medicamento existente = medicamentoRepository.findById(id)
+    // ===========================================================
+    // ATUALIZAR VIA DTO (NOVA VERSÃO COMPLETA)
+    // ===========================================================
+    @Transactional
+    public MedicamentoResponseDTO atualizarFromDTO(Long id, MedicamentoUpdateDTO dto) {
+
+        Medicamento medicamento = medicamentoRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Medicamento não encontrado!"));
 
-        existente.setTipoDosagem(atualizado.getTipoDosagem());
-        existente.setDoseDiaria(atualizado.getDoseDiaria());
-        existente.setQuantidadeCartela(atualizado.getQuantidadeCartela());
-        existente.setTotalFrasco(atualizado.getTotalFrasco());
-        existente.setTarja(atualizado.getTarja());
-
-        if (anvisaId != null) {
-            MedicamentoAnvisa anvisa = anvisaRepository.findById(anvisaId)
+        // ATUALIZA ANVISA
+        if (dto.getAnvisaId() != null) {
+            MedicamentoAnvisa anvisa = anvisaRepository.findById(dto.getAnvisaId())
                     .orElseThrow(() -> new EntityNotFoundException("Medicamento ANVISA não encontrado!"));
-            existente.setMedicamentoAnvisa(anvisa);
+            medicamento.setMedicamentoAnvisa(anvisa);
         }
 
-        if (existente.getTarja() == TarjaTipo.PRETA) {
-            existente.setContatarEmergencia(true);
-        } else if (contatoId != null) {
-            contatoRepository.findById(contatoId)
-                    .orElseThrow(() -> new EntityNotFoundException("Contato não encontrado!"));
-            existente.setContatarEmergencia(true);
-        } else {
-            existente.setContatarEmergencia(false);
+        // DOSAGEM
+        medicamento.setTipoDosagem(dto.getTipoDosagem());
+        medicamento.setDoseDiaria(dto.getDoseDiaria());
+
+        if ("mg".equals(dto.getTipoDosagem()))
+            medicamento.setQuantidadeCartela(dto.getQuantidadeCartela());
+        else
+            medicamento.setTotalFrasco(dto.getTotalFrasco());
+
+        // TARJA
+        medicamento.setTarja(dto.getTarja());
+
+        // CONTATOS
+        List<ContatoEmergencia> contatos = (dto.getContatosEmergenciaIds() != null)
+                ? dto.getContatosEmergenciaIds().stream()
+                .map(idContato -> contatoRepository.findById(idContato)
+                        .orElseThrow(() -> new EntityNotFoundException("Contato não encontrado: " + idContato)))
+                .toList()
+                : List.of();
+
+        medicamento.setContatosEmergencia(contatos);
+        medicamento.setContatarEmergencia(!contatos.isEmpty());
+
+
+        // ============================================================
+        //               HORÁRIOS — CORREÇÃO DEFINITIVA
+        // ============================================================
+
+        List<MedicamentoHorario> horariosAtuais = medicamento.getHorarios();
+
+        // Se vier null, cria
+        if (horariosAtuais == null) {
+            horariosAtuais = new ArrayList<>();
+            medicamento.setHorarios(horariosAtuais);
         }
 
-        int dias = existente.calcularDias();
-        existente.setDataInicio(LocalDate.now());
-        existente.setDataFim(LocalDate.now().plusDays(dias - 1));
+        // 🔥 Se for lista imutável do Hibernate → copia para ArrayList
+        if (!(horariosAtuais instanceof ArrayList)) {
+            horariosAtuais = new ArrayList<>(horariosAtuais);
+            medicamento.setHorarios(horariosAtuais);
+        }
 
-        if (atualizado.getHorarios() != null) {
-            existente.getHorarios().clear();
-            atualizado.getHorarios().forEach(h -> {
-                h.setMedicamento(existente);
+        // 🔥 Agora é seguro limpar
+        horariosAtuais.clear();
 
-                if (h.getHorario() == null || h.getHorario().isBlank()) {
-                    throw new IllegalArgumentException("Cada horário deve conter o campo 'horario'.");
-                }
-
-                if (h.getDataUltimaAtualizacao() == null) {
-                    h.setDataUltimaAtualizacao(LocalDate.now());
-                }
-
-                existente.getHorarios().add(h);
-            });
+        // 🔥 E adicionar novos itens
+        for (HorarioDTO h : dto.getHorarios()) {
+            horariosAtuais.add(new MedicamentoHorario(medicamento, h.getHorario()));
         }
 
 
-        return medicamentoRepository.save(existente);
+        // Período
+        medicamento.setDataInicio(LocalDate.now());
+        medicamento.setDataFim(LocalDate.now().plusDays(medicamento.calcularDias() - 1));
+
+        medicamentoRepository.save(medicamento);
+
+        return detalharMedicamento(medicamento.getId());
     }
 
-    // ===================== EXCLUIR =====================
+    // ===========================================================
+    // EXCLUIR
+    // ===========================================================
     @Transactional
     public void excluir(Long id) {
-        if (!medicamentoRepository.existsById(id)) {
+        if (!medicamentoRepository.existsById(id))
             throw new EntityNotFoundException("Medicamento não encontrado!");
-        }
         medicamentoRepository.deleteById(id);
     }
 
-    // ===================== UTL =====================
+
+    // ===========================================================
+    // UTILITÁRIOS
+    // ===========================================================
     private User validarUsuario(Long usuarioId) {
         return userRepository.findById(usuarioId)
                 .orElseThrow(() -> new EntityNotFoundException("Usuário não encontrado!"));
     }
-    public List<MedicamentoResponseDTO> buscarPorNomeAnvisa(String nome, Long usuarioId) {
 
-        validarUsuario(usuarioId);
-
-        List<Medicamento> medicamentos = medicamentoRepository
-                .findByUsuarioIdAndMedicamentoAnvisa_NomeProdutoContainingIgnoreCase(usuarioId, nome);
-
-        return medicamentos.stream().map(medicamento -> {
-
-            List<MedicamentoHorario> horarios =
-                    horarioRepository.findByMedicamentoIdOrderByHorarioAsc(medicamento.getId());
-
-            List<RegistroTomada> registrosDoDia =
-                    registroRepository.findByMedicamentoIdAndDataPrevista(
-                            medicamento.getId(),
-                            LocalDate.now()
-                    );
-
-            return new MedicamentoResponseDTO(medicamento, horarios, registrosDoDia);
-
-        }).toList();
-    }
     public List<MedicamentoResponseDTO> listarPorUsuarioComDetalhes(Long usuarioId) {
         validarUsuario(usuarioId);
 
-        List<Medicamento> medicamentos = medicamentoRepository.findByUsuarioId(usuarioId);
-
-        return medicamentos.stream().map(medicamento -> {
-            List<MedicamentoHorario> horarios =
-                    horarioRepository.findByMedicamentoIdOrderByHorarioAsc(medicamento.getId());
-
-            List<RegistroTomada> registrosDoDia =
-                    registroRepository.findByMedicamentoIdAndDataPrevista(
-                            medicamento.getId(),
-                            LocalDate.now()
-                    );
-
-            return new MedicamentoResponseDTO(medicamento, horarios, registrosDoDia);
-        }).collect(Collectors.toList());
+        return medicamentoRepository.findByUsuarioId(usuarioId).stream()
+                .map(m -> new MedicamentoResponseDTO(
+                        m,
+                        horarioRepository.findByMedicamentoIdOrderByHorarioAsc(m.getId()),
+                        registroRepository.findByMedicamentoIdAndDataPrevista(m.getId(), LocalDate.now())
+                ))
+                .toList();
     }
-
 }

@@ -30,6 +30,10 @@ public class RegistroTomadaService {
         this.medicamentoRepository = medicamentoRepository;
         this.horarioRepository = horarioRepository;
     }
+    @Transactional
+    public void apagarHistorico(Long usuarioId) {
+        registroRepository.deleteByUsuarioId(usuarioId);
+    }
 
     // Lista todos os registros de um medicamento
     public List<RegistroTomada> listarPorMedicamento(Long medicamentoId) {

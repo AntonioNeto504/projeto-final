@@ -1,5 +1,5 @@
 // src/features/Medicamentos/components/HistoricoMedicamentos.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Typography,
@@ -15,29 +15,59 @@ import type { Medicamento } from '../types/medicamento';
 
 interface HistoricoMedicamentosProps {
   historico: Medicamento[];
+  usuarioId?: number; // opcional, mas ideal
 }
 
-const HistoricoMedicamentos: React.FC<HistoricoMedicamentosProps> = ({ historico }) => {
-  // Transformar checkins em eventos legíveis
-  const eventos = historico
-    .flatMap((med) =>
-      (med.checkins || [])
-        .filter((iso) => !!iso) // evita valores vazios
-        .map((iso) => {
-          const date = new Date(iso);
-          return {
-            id: `${med.id}-${iso}`,
-            nome: med.nome,
-            iso,
-            horario: date.toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit'
-            }),
-            data: date.toLocaleDateString()
-          };
-        })
-    )
-    .sort((a, b) => (a.iso < b.iso ? 1 : -1)); // mais recente primeiro
+const HistoricoMedicamentos: React.FC<HistoricoMedicamentosProps> = ({
+  historico,
+  usuarioId = 1 // ⚠️ Troque depois pelo ID real
+}) => {
+
+  const [eventosLocal, setEventosLocal] = useState(() => {
+    return historico
+      .flatMap((med) =>
+        (med.checkins || [])
+          .filter((iso) => !!iso)
+          .map((iso) => {
+            const date = new Date(iso);
+            return {
+              id: `${med.id}-${iso}`,
+              nome: med.nome,
+              iso,
+              horario: date.toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit'
+              }),
+              data: date.toLocaleDateString()
+            };
+          })
+      )
+      .sort((a, b) => (a.iso < b.iso ? 1 : -1));
+  });
+
+  // 🗑️ Função apagar histórico
+// 🗑️ Função apagar histórico
+const apagarHistorico = async () => {
+  const confirmar = window.confirm(
+    "⚠️ ATENÇÃO!\n\nVocê realmente deseja APAGAR TODO o histórico de medicamentos?\n\n" +
+    "Esta ação é permanente e não pode ser desfeita."
+  );
+
+  if (!confirmar) return;
+
+  try {
+    await fetch(`/api/registro-tomada/usuario/${usuarioId}`, {
+      method: "DELETE",
+    });
+
+    setEventosLocal([]); // limpa imediatamente no front
+
+    alert("✔ Histórico apagado com sucesso!");
+  } catch (error) {
+    console.error("Erro ao apagar histórico", error);
+    alert("❌ Ocorreu um erro ao apagar o histórico.");
+  }
+};
 
   return (
     <Box
@@ -57,13 +87,23 @@ const HistoricoMedicamentos: React.FC<HistoricoMedicamentosProps> = ({ historico
           Histórico de Medicamentos
         </Typography>
 
-        <Button component={Link} to="/medicamentos/lista" variant="outlined">
-          📋 Lista
-        </Button>
+        <Stack direction="row" spacing={2}>
+          <Button
+            variant="outlined"
+            color="error"
+            onClick={apagarHistorico}
+          >
+            🗑️ Apagar Histórico
+          </Button>
+
+          <Button component={Link} to="/medicamentos/lista" variant="outlined">
+            📋 Lista
+          </Button>
+        </Stack>
       </Stack>
 
       {/* Caso não haja eventos */}
-      {eventos.length === 0 ? (
+      {eventosLocal.length === 0 ? (
         <Box
           sx={{
             textAlign: 'center',
@@ -86,7 +126,7 @@ const HistoricoMedicamentos: React.FC<HistoricoMedicamentosProps> = ({ historico
         </Box>
       ) : (
         <List>
-          {eventos.map((ev) => (
+          {eventosLocal.map((ev) => (
             <ListItem key={ev.id} sx={{ px: 0, mb: 2 }}>
               <Card sx={{ width: '100%', borderRadius: 2, boxShadow: 2 }}>
                 <CardContent>

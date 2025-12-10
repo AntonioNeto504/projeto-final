@@ -1,11 +1,12 @@
 package br.pucgo.ads.projetointegrador.DoseCertaApp.model;
 
-
 import br.pucgo.ads.projetointegrador.plataforma.entity.User;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
+
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -24,15 +25,24 @@ public class Medicamento {
 
     // Relacionamento com usuário
     @ManyToOne
-    @JoinColumn(name = "usuario_id", nullable = false, referencedColumnName = "id")
+    @JoinColumn(name = "usuario_id", nullable = false)
     @JsonIgnore
     private User usuario;
 
-    // Para comprimidos
+    // 🔥 agora é N:N — vários contatos
+    @ManyToMany
+    @JoinTable(
+            name = "medicamento_contatos",
+            joinColumns = @JoinColumn(name = "medicamento_id"),
+            inverseJoinColumns = @JoinColumn(name = "contato_id")
+    )
+    private List<ContatoEmergencia> contatosEmergencia = new ArrayList<>();
+
+    // DOSAGEM — comprimido
     @Column(name = "quantidade_cartela")
     private Integer quantidadeCartela;
 
-    // Para líquidos
+    // DOSAGEM — líquido
     @Column(name = "total_frasco")
     private Double totalFrasco;
 
@@ -58,7 +68,7 @@ public class Medicamento {
     @OneToMany(mappedBy = "medicamento", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MedicamentoHorario> horarios;
 
-    // ===== Getters e Setters =====
+    // ===== GETTERS / SETTERS =====
     public Long getId() { return id; }
 
     public MedicamentoAnvisa getMedicamentoAnvisa() { return medicamentoAnvisa; }
@@ -66,6 +76,14 @@ public class Medicamento {
 
     public User getUsuario() { return usuario; }
     public void setUsuario(User usuario) { this.usuario = usuario; }
+
+    public List<ContatoEmergencia> getContatosEmergencia() {
+        return contatosEmergencia;
+    }
+
+    public void setContatosEmergencia(List<ContatoEmergencia> contatosEmergencia) {
+        this.contatosEmergencia = contatosEmergencia;
+    }
 
     public Integer getQuantidadeCartela() { return quantidadeCartela; }
     public void setQuantidadeCartela(Integer quantidadeCartela) { this.quantidadeCartela = quantidadeCartela; }
@@ -82,7 +100,9 @@ public class Medicamento {
     public TarjaTipo getTarja() { return tarja; }
     public void setTarja(TarjaTipo tarja) {
         this.tarja = tarja;
-        if (tarja == TarjaTipo.PRETA) this.contatarEmergencia = true;
+        if (tarja == TarjaTipo.PRETA) {
+            this.contatarEmergencia = true;
+        }
     }
 
     public Boolean getContatarEmergencia() { return contatarEmergencia; }
@@ -97,15 +117,15 @@ public class Medicamento {
     public List<MedicamentoHorario> getHorarios() { return horarios; }
     public void setHorarios(List<MedicamentoHorario> horarios) { this.horarios = horarios; }
 
-    // ===== Método auxiliar =====
+    // ===== CÁLCULO DE DIAS =====
     public int calcularDias() {
         if (doseDiaria == null || doseDiaria <= 0) return 0;
 
-        if (quantidadeCartela != null && quantidadeCartela > 0) {
+        if (quantidadeCartela != null && quantidadeCartela > 0)
             return quantidadeCartela / doseDiaria;
-        } else if (totalFrasco != null && totalFrasco > 0) {
+
+        if (totalFrasco != null && totalFrasco > 0)
             return (int) Math.floor(totalFrasco / doseDiaria);
-        }
 
         return 0;
     }

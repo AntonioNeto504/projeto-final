@@ -1,6 +1,9 @@
 package br.pucgo.ads.projetointegrador.DoseCertaApp.controller;
 
+import br.pucgo.ads.projetointegrador.DoseCertaApp.dto.MedicamentoCreateDTO;
+import br.pucgo.ads.projetointegrador.DoseCertaApp.dto.MedicamentoCriadoDTO;
 import br.pucgo.ads.projetointegrador.DoseCertaApp.dto.MedicamentoResponseDTO;
+import br.pucgo.ads.projetointegrador.DoseCertaApp.dto.MedicamentoUpdateDTO;
 import br.pucgo.ads.projetointegrador.DoseCertaApp.model.Medicamento;
 import br.pucgo.ads.projetointegrador.DoseCertaApp.service.MedicamentoService;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +21,9 @@ public class MedicamentoController {
         this.service = service;
     }
 
+    // ================================================================
+    // LISTAGENS
+    // ================================================================
     @GetMapping
     public ResponseEntity<List<Medicamento>> listarTodos() {
         return ResponseEntity.ok(service.listarTodos());
@@ -28,36 +34,55 @@ public class MedicamentoController {
         return ResponseEntity.ok(service.listarPorUsuario(usuarioId));
     }
 
-    // NOVO ENDPOINT COM HORÁRIOS + REGISTRO DO DIA
     @GetMapping("/{id}")
     public ResponseEntity<MedicamentoResponseDTO> detalhar(@PathVariable Long id) {
         return ResponseEntity.ok(service.detalharMedicamento(id));
     }
+
     @GetMapping("/usuario/{usuarioId}/detalhes")
-    public ResponseEntity<List<MedicamentoResponseDTO>> listarPorUsuarioDetalhado(@PathVariable Long usuarioId) {
+    public ResponseEntity<List<MedicamentoResponseDTO>> listarPorUsuarioDetalhado(
+            @PathVariable Long usuarioId
+    ) {
         return ResponseEntity.ok(service.listarPorUsuarioComDetalhes(usuarioId));
     }
 
+
+    // ================================================================
+    // CRIAR
+    // ================================================================
     @PostMapping
-    public ResponseEntity<Medicamento> criar(
-            @RequestBody Medicamento medicamento,
-            @RequestParam Long usuarioId,
-            @RequestParam(required = false) Long contatoId,
-            @RequestParam(required = false) Long anvisaId
+    public ResponseEntity<MedicamentoCriadoDTO> criar(
+            @RequestBody MedicamentoCreateDTO dto,
+            @RequestParam Long anvisaId
     ) {
-        return ResponseEntity.ok(service.salvar(medicamento, usuarioId, contatoId, anvisaId));
+        Medicamento salvo = service.salvarFromDTO(dto, anvisaId);
+
+        return ResponseEntity.ok(
+                new MedicamentoCriadoDTO(
+                        salvo.getId(),
+                        salvo.getMedicamentoAnvisa().getNomeProduto(),
+                        salvo.getTarja().name()
+                )
+        );
     }
 
+
+    // ================================================================
+    // ATUALIZAR  (USANDO MedicamentoUpdateDTO)
+    // ================================================================
     @PutMapping("/{id}")
-    public ResponseEntity<Medicamento> atualizar(
+    public ResponseEntity<MedicamentoResponseDTO> atualizar(
             @PathVariable Long id,
-            @RequestBody Medicamento medicamento,
-            @RequestParam(required = false) Long contatoId,
-            @RequestParam(required = false) Long anvisaId
+            @RequestBody MedicamentoUpdateDTO dto
     ) {
-        return ResponseEntity.ok(service.atualizar(id, medicamento, contatoId, anvisaId));
+        MedicamentoResponseDTO atualizado = service.atualizarFromDTO(id, dto);
+        return ResponseEntity.ok(atualizado);
     }
 
+
+    // ================================================================
+    // DELETAR
+    // ================================================================
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> excluir(@PathVariable Long id) {
         service.excluir(id);

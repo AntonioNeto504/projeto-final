@@ -17,6 +17,7 @@ import CadastroMedicamento from '@/features/medicamentos/components/CadastroMedi
 import HistoricoMedicamentosPage from '@/features/medicamentos/pages/HistoricoMedicamentosPage';
 import ListaMedicamentosPage from '@/features/medicamentos/pages/ListaMedicamentosPage';
 import IncialPage from '@/features/medicamentos/pages/InicialPage';
+import EditarMedicamentoPage from "@/features/medicamentos/pages/EditarMedicamentoPage";
 
 
 
@@ -62,8 +63,9 @@ export function AppRoutes() {
 
         {/* Rotas de Medicamentos */}
         <Route path="medicamentos">
-          <Route index element={<IncialPage />} /> 
+          <Route path="" element={<IncialPage />} />   {/* Index corrigido */}
           <Route path="cadastro" element={<CadastroMedicamento />} />
+          <Route path="editar/:id" element={<EditarMedicamentoPage />} />
           <Route path="historico" element={<HistoricoMedicamentosPage />} />
           <Route path="listagem" element={<ListaMedicamentosPage />} />
           <Route path="lista" element={<ListaMedicamentosPage />} />
