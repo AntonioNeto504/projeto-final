@@ -18,7 +18,7 @@ public class MedicamentoAtrasoScheduler {
     }
 
     // Executa a cada 1 segundo
-    @Scheduled(fixedRate = 1000)
+    @Scheduled(fixedRate = 6000)
     public void checarAtrasos() {
         logger.info("⏱️ Scheduler executado — verificando atrasos...");
         atrasoService.verificarAtrasos();

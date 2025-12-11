@@ -20,6 +20,8 @@ import { useNavigate } from "react-router-dom";
 import { medicamentoApi } from "../api/medicamentoApi";
 import { getUsuarioId } from "@/features/medicamentos/utils/session";
 
+import MedicationNotifier from "@/features/medicamentos/components/MedicationNotifier";
+
 interface HistoricoItem {
   id: number;
   medicamentoNome: string;
@@ -62,127 +64,130 @@ export default function HistoricoMedicamentosPage() {
   }, []);
 
   return (
-    <Box sx={{ py: 4, px: 2, display: "flex", justifyContent: "center" }}>
-      <Card sx={{ width: "100%", maxWidth: 900, borderRadius: 3 }}>
-        <CardContent>
-          {/* HEADER */}
-          <Stack
-            direction="row"
-            justifyContent="space-between"
-            alignItems="center"
-            mb={3}
-          >
-            <Typography
-              variant="h5"
-              sx={{
-                fontSize: 24,
-                fontWeight: 700,
-                color: "primary.main",
-              }}
+    <>
+      {/* 🔔 Notificador ativo nesta página */}
+      <MedicationNotifier />
+
+      <Box sx={{ py: 4, px: 2, display: "flex", justifyContent: "center" }}>
+        <Card sx={{ width: "100%", maxWidth: 900, borderRadius: 3 }}>
+          <CardContent>
+            {/* HEADER */}
+            <Stack
+              direction="row"
+              justifyContent="space-between"
+              alignItems="center"
+              mb={3}
             >
-              Histórico de Tomadas
-            </Typography>
-
-            <Stack direction="row" spacing={1}>
-              <Button
-                variant="contained"
-                startIcon={<HomeIcon />}
-                onClick={() => navigate("/home")}
-                sx={{ fontSize: 16, padding: "8px 12px", fontWeight: "normal" }}
-              >
-                Home
-              </Button>
-
-              <Button
-                variant="outlined"
-                startIcon={<ListIcon />}
-                onClick={() => navigate("/medicamentos/lista")}
-                sx={{ fontSize: 16, padding: "8px 12px", fontWeight: "normal" }}
-              >
-                Lista
-              </Button>
-
-              <Button
-                variant="contained"
-                color="success"
-                startIcon={<AddIcon />}
-                onClick={() => navigate("/medicamentos/cadastro")}
-                sx={{ fontSize: 16, padding: "8px 12px", fontWeight: "normal" }}
-              >
-                Cadastrar
-              </Button>
-            </Stack>
-          </Stack>
-
-          {/* LISTAGEM */}
-          {historico.length === 0 ? (
-            <Box sx={{ textAlign: "center", py: 8 }}>
-              <Typography sx={{ fontSize: 20, mb: 2 }}>
-                Nenhum medicamento tomado registrado ✨
-              </Typography>
-
               <Typography
-                sx={{ fontSize: 16, color: "text.secondary", mb: 3 }}
+                variant="h5"
+                sx={{
+                  fontSize: 24,
+                  fontWeight: 700,
+                  color: "primary.main",
+                }}
               >
-                Quando você marcar um medicamento como tomado, o registro
-                aparecerá aqui.
+                HISTÓRICO DE TOMADAS
               </Typography>
 
-              <Stack direction="row" spacing={2} justifyContent="center">
+              <Stack direction="row" spacing={1}>
                 <Button
                   variant="contained"
-                  startIcon={<AddIcon />}
-                  onClick={() => navigate("/medicamentos/cadastro")}
+                  startIcon={<HomeIcon />}
+                  onClick={() => navigate("/home")}
+                  sx={{ fontSize: 16, padding: "8px 12px" }}
                 >
-                  Cadastrar Medicamento
+                  Home
                 </Button>
 
                 <Button
                   variant="outlined"
                   startIcon={<ListIcon />}
                   onClick={() => navigate("/medicamentos/lista")}
+                  sx={{ fontSize: 16, padding: "8px 12px" }}
                 >
-                  Ver Lista
+                  Lista
+                </Button>
+
+                <Button
+                  variant="contained"
+                  color="success"
+                  startIcon={<AddIcon />}
+                  onClick={() => navigate("/medicamentos/cadastro")}
+                  sx={{ fontSize: 16, padding: "8px 12px" }}
+                >
+                  Cadastrar
                 </Button>
               </Stack>
-            </Box>
-          ) : (
-            <Stack spacing={3}>
-              {historico.map((h) => (
-                <Box key={h.id} sx={{ p: 2, borderRadius: 2, boxShadow: 1 }}>
-                  <Stack
-                    direction="row"
-                    alignItems="center"
-                    justifyContent="space-between"
+            </Stack>
+
+            {/* LISTAGEM */}
+            {historico.length === 0 ? (
+              <Box sx={{ textAlign: "center", py: 8 }}>
+                <Typography sx={{ fontSize: 20, mb: 2 }}>
+                  Nenhum medicamento tomado registrado ✨
+                </Typography>
+
+                <Typography
+                  sx={{ fontSize: 16, color: "text.secondary", mb: 3 }}
+                >
+                  Quando você marcar um medicamento como tomado, o registro
+                  aparecerá aqui.
+                </Typography>
+
+                <Stack direction="row" spacing={2} justifyContent="center">
+                  <Button
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={() => navigate("/medicamentos/cadastro")}
                   >
-                    <Typography sx={{ fontSize: 20, fontWeight: 700 }}>
-                      {h.medicamentoNome}
+                    Cadastrar Medicamento
+                  </Button>
+
+                  <Button
+                    variant="outlined"
+                    startIcon={<ListIcon />}
+                    onClick={() => navigate("/medicamentos/lista")}
+                  >
+                    Ver Lista
+                  </Button>
+                </Stack>
+              </Box>
+            ) : (
+              <Stack spacing={3}>
+                {historico.map((h) => (
+                  <Box key={h.id} sx={{ p: 2, borderRadius: 2, boxShadow: 1 }}>
+                    <Stack
+                      direction="row"
+                      alignItems="center"
+                      justifyContent="space-between"
+                    >
+                      <Typography sx={{ fontSize: 20, fontWeight: 700 }}>
+                        {h.medicamentoNome}
+                      </Typography>
+
+                      <Chip label="Tomado" color="success" />
+                    </Stack>
+
+                    <Divider sx={{ my: 1 }} />
+
+                    <Typography sx={{ fontSize: 16 }}>
+                      ⏰ Horário previsto:{" "}
+                      <strong>{h.horarioPrevisto}</strong>
                     </Typography>
 
-                    <Chip label="Tomado" color="success" />
-                  </Stack>
-
-                  <Divider sx={{ my: 1 }} />
-
-                  <Typography sx={{ fontSize: 16 }}>
-                    ⏰ Horário previsto:{" "}
-                    <strong>{h.horarioPrevisto}</strong>
-                  </Typography>
-
-                  <Typography
-                    sx={{ fontSize: 16, color: "text.secondary" }}
-                  >
-                    ✔ Tomado em:{" "}
-                    <strong>
-                      {h.dataPrevista} às {h.horarioRealTomado}
-                    </strong>
-                  </Typography>
-                </Box>
-              ))}
-            </Stack>
-          )}
-        </CardContent>
-      </Card>
-    </Box>
+                    <Typography sx={{ fontSize: 16, color: "text.secondary" }}>
+                      ✔ Tomado em:{" "}
+                      <strong>
+                        {h.dataPrevista} às {h.horarioRealTomado}
+                      </strong>
+                    </Typography>
+                  </Box>
+                ))}
+              </Stack>
+            )}
+          </CardContent>
+        </Card>
+      </Box>
+    </>
   );
 }

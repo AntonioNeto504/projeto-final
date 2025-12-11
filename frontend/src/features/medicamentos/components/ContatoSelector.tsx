@@ -1,66 +1,96 @@
-import React from "react";
-import {
-  Box,
-  FormControl,
-  MenuItem,
-  Select,
-  Typography,
-  Button,
-} from "@mui/material";
-
-interface Contato {
-  id: number;
-  nome: string;
-  telefone: string;
-  relacao?: string;
-}
+import React, { useMemo, useState } from "react";
+import { Box, Button, FormControl, MenuItem, Select, IconButton, Typography, Stack } from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+import ContatoDialog from "./ContatoDialog";
+import { useContatos } from "../hooks/useContatos";
+import type { ContatoPayload } from "../types/contato";
 
 interface Props {
-  contatos: Contato[];
-  contatosSelecionados: number[];
-  onChange: (ids: number[]) => void;
+  value?: number | null;
+  onChange: (id?: number) => void;
 }
 
-export default function ContatoSelector({
-  contatos,
-  contatosSelecionados,
-  onChange,
-}: Props) {
+export default function ContatoSelector({ value, onChange }: Props) {
+  const { contatos, loading, create, update, remove } = useContatos();
+  const [openDialog, setOpenDialog] = useState(false);
+  const [editing, setEditing] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const selected = useMemo(() => contatos.find((c) => c.id === value), [contatos, value]);
+
+  const handleOpenCreate = () => {
+    setEditing(null);
+    setOpenDialog(true);
+  };
+
+  const handleOpenEdit = () => {
+    if (!selected) return;
+    setEditing(selected.id);
+    setOpenDialog(true);
+  };
+
+  const handleSave = async (payload: ContatoPayload) => {
+    setSaving(true);
+    try {
+      if (editing != null) {
+        await update(editing, payload);
+        onChange(editing);
+      } else {
+        const created = await create(payload);
+        onChange(created.id);
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selected) return;
+    if (!confirm("Deseja realmente excluir esse contato de emergência?")) return;
+    await remove(selected.id);
+    onChange(undefined);
+  };
+
   return (
     <Box>
-      <Typography sx={{ fontSize: 16, fontWeight: 600, mb: 1 }}>
-        Contatos de Emergência
-      </Typography>
+      <Stack direction="row" spacing={2} alignItems="center">
+        <FormControl fullWidth size="small">
+          <Select
+            displayEmpty
+            value={value ?? ""}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "") onChange(undefined);
+              else if (v === "new") handleOpenCreate();
+              else onChange(Number(v));
+            }}
+          >
+            <MenuItem value=""><em>Não vincular</em></MenuItem>
+            {contatos.map((c) => (
+              <MenuItem key={c.id} value={c.id}>{c.nome} — {c.telefone} ({c.relacao ?? "—"})</MenuItem>
+            ))}
+            <MenuItem value="new">➕ Cadastrar novo contato</MenuItem>
+          </Select>
+        </FormControl>
 
-      <FormControl fullWidth size="small">
-        <Select
-          multiple
-          value={contatosSelecionados}
-          onChange={(e) => onChange(e.target.value as number[])}
-          renderValue={(selected) => {
-            if (!selected.length) return "Nenhum contato selecionado";
+        {value ? (
+          <>
+            <IconButton onClick={handleOpenEdit}><EditIcon/></IconButton>
+            <IconButton onClick={handleDelete}><DeleteIcon/></IconButton>
+          </>
+        ) : (
+          <Button variant="outlined" onClick={handleOpenCreate}>Cadastrar</Button>
+        )}
+      </Stack>
 
-            if (selected.length === 1) {
-              const c = contatos.find((x) => x.id === selected[0]);
-              return c ? `${c.nome} — ${c.telefone}` : selected[0];
-            }
-
-            return `${selected.length} contatos selecionados`;
-          }}
-        >
-          {contatos.map((c) => (
-            <MenuItem key={c.id} value={c.id} sx={{ fontSize: 16 }}>
-              <input
-                type="checkbox"
-                checked={contatosSelecionados.includes(c.id)}
-                readOnly
-                style={{ marginRight: 8 }}
-              />
-              {c.nome} — {c.telefone}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      <ContatoDialog
+        open={openDialog}
+        initial={editing ? contatos.find((c) => c.id === editing) : undefined}
+        onClose={() => setOpenDialog(false)}
+        onSave={handleSave}
+        saving={saving}
+      />
     </Box>
   );
 }

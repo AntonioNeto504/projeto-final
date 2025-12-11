@@ -1,27 +1,22 @@
 package br.pucgo.ads.projetointegrador.DoseCertaApp.dto;
 
-import br.pucgo.ads.projetointegrador.DoseCertaApp.model.TarjaTipo;
 import java.util.List;
 
 public class MedicamentoUpdateDTO {
 
-    private String tipoDosagem;        // "mg" ou "ml"
-    private Integer doseDiaria;        // quantidade por dose
+    private String tipoDosagem;
+    private Integer doseDiaria;
 
-    private Integer quantidadeCartela; // comprimidos (para sólido)
-    private Double totalFrasco;        // ml (para líquido)
+    private Integer quantidadeCartela;
+    private Double totalFrasco;
 
-    private TarjaTipo tarja;           // PRETA / VERMELHA / AMARELA / SEM_TARJA
+    private String tarja; // ✔ agora String
 
-    private Long anvisaId;             // novo ID da ANVISA (se alterar o medicamento)
+    private Long anvisaId;
 
-    private List<Long> contatosEmergenciaIds; // múltiplos contatos
+    private List<Long> contatosEmergenciaIds;
 
-    private List<HorarioDTO> horarios; // [{ "id":1, "horario":"08:00" }]
-
-    // ===================
-    // GETTERS E SETTERS
-    // ===================
+    private List<HorarioDTO> horarios;
 
     public String getTipoDosagem() {
         return tipoDosagem;
@@ -55,11 +50,11 @@ public class MedicamentoUpdateDTO {
         this.totalFrasco = totalFrasco;
     }
 
-    public TarjaTipo getTarja() {
+    public String getTarja() {  // ✔ agora String
         return tarja;
     }
 
-    public void setTarja(TarjaTipo tarja) {
+    public void setTarja(String tarja) {  // ✔ setter String
         this.tarja = tarja;
     }
 

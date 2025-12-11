@@ -28,14 +28,17 @@ public class MedicamentoAtrasoService {
         this.smsService = smsService;
     }
 
-    // 🔥 ESSENCIAL PARA EVITAR ERRO DE LAZY LOADING
+    private int obterTempoLimite(Medicamento med) {
+        return 1; // sempre 5 minutos de tolerância
+    }
+
+
     @Transactional
     public void verificarAtrasos() {
 
         LocalDateTime agora = LocalDateTime.now();
         var horarios = horarioRepo.findAllAbertos();
 
-        logger.debug("⏱️ Verificando atrasos… {} horários encontrados", horarios.size());
         DateTimeFormatter horaFmt = DateTimeFormatter.ofPattern("HH:mm");
 
         for (MedicamentoHorario h : horarios) {
@@ -47,18 +50,28 @@ public class MedicamentoAtrasoService {
                     continue;
                 }
 
-                LocalDateTime horaPrevista = h.getHorarioComoDataHora();
+                // 🔥 USAR SEMPRE A PROXIMA EXECUÇÃO REAL (HOJE OU AMANHÃ)
+                LocalDateTime horaPrevista = h.getProximaExecucao();
 
-                // Se ainda não passou da hora → não envia
-                if (!agora.isAfter(horaPrevista)) {
+                // Se o horário ainda não chegou → NÃO notificar
+                if (horaPrevista.isAfter(agora)) {
                     continue;
                 }
 
-                // Carrega contatos de emergência (AGORA funciona por causa do @Transactional)
+                // Se já tomou → não notificar
+                if (h.getTomadoHoje()) {
+                    continue;
+                }
+
+                // Se já notificou → não notificar
+                if (h.getNotificado()) {
+                    continue;
+                }
+
                 var contatos = med.getContatosEmergencia();
 
                 if (contatos == null || contatos.isEmpty()) {
-                    logger.debug("ℹ️ Medicamento id={} não possui contatos de emergência — pulando", med.getId());
+                    logger.debug("ℹ️ Medicamento id={} sem contatos — pulando", med.getId());
                     continue;
                 }
 
@@ -67,11 +80,11 @@ public class MedicamentoAtrasoService {
                         ? med.getMedicamentoAnvisa().getNomeProduto()
                         : "medicamento";
 
-                String horarioPrevisto = horaPrevista.format(horaFmt);
+                String horarioPrevistoFmt = horaPrevista.format(horaFmt);
 
                 String mensagem = String.format(
                         "⚠️ ALERTA: O usuário %s não tomou o medicamento %s às %s. Por favor verificar.",
-                        nomeUsuario, nomeMedicamento, horarioPrevisto
+                        nomeUsuario, nomeMedicamento, horarioPrevistoFmt
                 );
 
                 boolean algumEnviado = false;
@@ -80,11 +93,10 @@ public class MedicamentoAtrasoService {
 
                     String numeroBruto = contato.getTelefone();
                     if (numeroBruto == null || numeroBruto.trim().isEmpty()) {
-                        logger.warn("Contato id={} sem telefone válido — ignorando", contato.getId());
+                        logger.warn("Contato id={} sem telefone — ignorando", contato.getId());
                         continue;
                     }
 
-                    // tratamento seguro
                     String digits = numeroBruto.replaceAll("\\D", "");
                     String telefoneFinal = digits.startsWith("55")
                             ? "+" + digits
@@ -95,7 +107,7 @@ public class MedicamentoAtrasoService {
                                 telefoneFinal, contato.getId(), h.getId());
 
                         String sid = smsService.sendSms(telefoneFinal, mensagem);
-                        logger.info("✅ SMS enviado com sucesso (sid={})", sid);
+                        logger.info("✅ SMS enviado (sid={})", sid);
 
                         algumEnviado = true;
 

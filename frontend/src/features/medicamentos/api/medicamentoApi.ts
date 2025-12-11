@@ -1,18 +1,24 @@
 import http from "@/lib/http";
 
+export interface RegistroTomadaDTO {
+  id: number;
+  horarioRealTomado: string;
+  dataPrevista: string;
+}
+
 export interface MedicamentoHorarioDTO {
   id: number;
   horario: string;
-  tomado: boolean;
-  tomadoHoje?: boolean;
-  tomadoEm?: string | null;
+  tomadoHoje: boolean;                    // ✔ vem do backend
+  proximaExecucao?: string | null;        // ✔ novo campo do backend
+  registroTomada?: RegistroTomadaDTO | null; // ✔ novo campo
 }
 
 export interface MedicamentoDTO {
   id: number;
   nome: string;
   tarja: string;
-  horarios: MedicamentoHorarioDTO[];
+  horarios: MedicamentoHorarioDTO[];      // ✔ agora compatível
 }
 
 export const medicamentoApi = {
@@ -20,6 +26,7 @@ export const medicamentoApi = {
     const response = await http.get(
       `/api/medicamentos/usuario/${usuarioId}/detalhes`
     );
+
     return response.data;
   },
 
@@ -54,7 +61,6 @@ export const medicamentoApi = {
     return data;
   },
 
-  // 🧹 APAGAR TODO HISTÓRICO DO USUÁRIO
   async limparHistorico(usuarioId: number) {
     return http.delete(`/api/registro-tomada/usuario/${usuarioId}`);
   },

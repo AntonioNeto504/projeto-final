@@ -15,8 +15,10 @@ import {
 } from "@mui/material";
 
 import { useNavigate, useParams } from "react-router-dom";
-import { medicamentoApi } from "../api/medicamentoApi";
+
+import { medicamentoApi } from "../api/medicamentoApi";   // ✔ correto
 import { anvisaApi } from "../api/anvisaApi";
+import { getUsuarioId } from "../utils/session";
 
 export default function EditarMedicamentoPage() {
   const { id } = useParams();
@@ -26,35 +28,31 @@ export default function EditarMedicamentoPage() {
   const [form, setForm] = useState<any>(null);
   const [listaAnvisa, setListaAnvisa] = useState<any[]>([]);
 
-  // 🔹 Carrega lista ANVISA
+  // Carrega lista ANVISA
   useEffect(() => {
-    anvisaApi.listar().then(setListaAnvisa);
+    anvisaApi.listar()
+      .then(setListaAnvisa)
+      .catch(() => alert("Erro ao carregar lista ANVISA"));
   }, []);
 
-  // 🔹 Carregar medicamento
+  // Carrega medicamento
   useEffect(() => {
-    medicamentoApi
-      .buscarPorId(Number(id))
+    medicamentoApi.buscarPorId(Number(id))   // ✔ singular
       .then((data) => {
-        const nomeLimpo = data.nome?.replace(/"/g, "").trim();
+        const horarios = data.horarios?.map((h: any) => h.horario) ?? [""];
 
         setForm({
           id: data.id,
-          nome: nomeLimpo,
-          anvisaId: data.anvisaId,  // ← usa o ID da api
-          tarja: data.tarja ?? "SEM_TARJA",
-
-          horarios: (data.horarios ?? []).map((h: any) => ({
-            id: h.id,
-            horario: h.horario,
-          })),
-
-          // campos exigidos no update
-          tipoDosagem: "mg",
-          doseDiaria: 1,
-          quantidadeCartela: 1,
-          totalFrasco: null,
-          contatosEmergenciaIds: [],
+          nome: data.medicamentoAnvisa?.nomeProduto ?? "",
+          anvisaId: data.medicamentoAnvisa?.id,
+          tipo: data.tipoDosagem === "ml" ? "liquido" : "comprimido",
+          unidadePorDose: data.tipoDosagem === "mg" ? data.doseDiaria : 0,
+          mlPorDose: data.tipoDosagem === "ml" ? data.doseDiaria : 0,
+          quantidadeTotal: data.quantidadeCartela ?? data.totalFrasco ?? 0,
+          vezesAoDia: horarios.length,
+          horarios,
+          tarja: data.tarja?.toLowerCase() ?? "sem_tarja",
+          contatosEmergenciaIds: data.contatosEmergencia?.map((c: any) => c.id) ?? []
         });
 
         setLoading(false);
@@ -65,26 +63,53 @@ export default function EditarMedicamentoPage() {
       });
   }, [id]);
 
-  const atualizar = async () => {
-    try {
-      const payload = {
-        tipoDosagem: form.tipoDosagem,
-        doseDiaria: form.doseDiaria,
-        quantidadeCartela: form.quantidadeCartela,
-        totalFrasco: form.totalFrasco,
-        tarja: form.tarja,
-        anvisaId: form.anvisaId,
-        contatosEmergenciaIds: form.contatosEmergenciaIds,
-        horarios: form.horarios.map((h: any) => ({ horario: h.horario })),
-      };
+  // =============================
+  //  MONTAR PAYLOAD IGUAL AO CADASTRO
+  // =============================
 
-      await medicamentoApi.atualizar(form.id, payload);
+  function montarPayload(usuarioId: number) {
+    const horarios = (form.horarios || [])
+      .map((h: string) => h.trim())
+      .filter((h: string) => h)
+      .map((h: string) => ({ horario: h }));
+
+    return {
+      usuarioId,
+      doseDiaria: form.tipo === "liquido" ? form.mlPorDose : form.unidadePorDose,
+      tipoDosagem: form.tipo === "liquido" ? "ml" : "mg",
+      tarja: form.tarja.toUpperCase(),
+      horarios,
+      contatosEmergenciaIds: form.contatosEmergenciaIds ?? [],
+      ...(form.tipo === "liquido"
+        ? { totalFrasco: form.quantidadeTotal }
+        : { quantidadeCartela: form.quantidadeTotal })
+    };
+  }
+
+  async function atualizar() {
+    try {
+      const usuarioId = getUsuarioId();
+      if (!usuarioId) {
+        alert("Usuário não identificado.");
+        return;
+      }
+
+      const payload = montarPayload(usuarioId);
+
+      await medicamentoApi.atualizar(form.id, payload);  // ✔ correto
+
       alert("Medicamento atualizado com sucesso!");
       navigate("/medicamentos/lista");
+
     } catch (err) {
+      console.error(err);
       alert("Erro ao atualizar medicamento.");
     }
-  };
+  }
+
+  // =============================
+  //  RENDERIZAÇÃO
+  // =============================
 
   if (loading || !form) {
     return (
@@ -95,7 +120,7 @@ export default function EditarMedicamentoPage() {
   }
 
   const medicamentoSelecionado =
-    listaAnvisa.find((m) => m.id === form.anvisaId) || null;
+    listaAnvisa.find((m) => m.id === form.anvisaId) ?? null;
 
   return (
     <Box sx={{ display: "flex", justifyContent: "center", py: 4, px: 2 }}>
@@ -106,18 +131,19 @@ export default function EditarMedicamentoPage() {
           </Typography>
 
           <Stack spacing={3}>
-            {/* 🔹 AUTOCOMPLETE – NOME VINDO DA ANVISA */}
+
+            {/* ANVISA */}
             <Autocomplete
               options={listaAnvisa}
               value={medicamentoSelecionado}
               getOptionLabel={(opt: any) => opt.nomeProduto}
               onChange={(_, selected) => {
                 if (selected) {
-                  setForm({
-                    ...form,
+                  setForm((prev: any) => ({
+                    ...prev,
                     nome: selected.nomeProduto,
-                    anvisaId: selected.id,
-                  });
+                    anvisaId: selected.id
+                  }));
                 }
               }}
               renderInput={(params) => (
@@ -129,12 +155,14 @@ export default function EditarMedicamentoPage() {
             <FormControl fullWidth>
               <Select
                 value={form.tarja}
-                onChange={(e) => setForm({ ...form, tarja: e.target.value })}
+                onChange={(e) =>
+                  setForm((prev: any) => ({ ...prev, tarja: e.target.value }))
+                }
               >
-                <MenuItem value="SEM_TARJA">Comum</MenuItem>
-                <MenuItem value="AMARELA">Amarela</MenuItem>
-                <MenuItem value="VERMELHA">Vermelha</MenuItem>
-                <MenuItem value="PRETA">Preta</MenuItem>
+                <MenuItem value="sem_tarja">Comum</MenuItem>
+                <MenuItem value="amarela">Amarela</MenuItem>
+                <MenuItem value="vermelha">Vermelha</MenuItem>
+                <MenuItem value="preta">Preta</MenuItem>
               </Select>
             </FormControl>
 
@@ -144,16 +172,15 @@ export default function EditarMedicamentoPage() {
               Horários
             </Typography>
 
-            {form.horarios?.map((h: any, idx: number) => (
+            {form.horarios.map((h: string, idx: number) => (
               <TextField
                 key={idx}
                 type="time"
-                label={`Horário ${idx + 1}`}
-                value={h.horario}
+                value={h}
                 onChange={(e) => {
-                  const updated = [...form.horarios];
-                  updated[idx].horario = e.target.value;
-                  setForm({ ...form, horarios: updated });
+                  const arr = [...form.horarios];
+                  arr[idx] = e.target.value;
+                  setForm((prev: any) => ({ ...prev, horarios: arr }));
                 }}
                 fullWidth
               />

@@ -23,6 +23,9 @@ import { useNavigate } from "react-router-dom";
 import { medicamentoApi, type MedicamentoDTO } from "../api/medicamentoApi";
 import { getUsuarioId } from "@/features/medicamentos/utils/session";
 
+// ✅ IMPORT DA NOTIFICAÇÃO
+import MedicationNotifier from "@/features/medicamentos/components/MedicationNotifier";
+
 // DATA FORMATADA
 const dataHojeUpper = new Date()
   .toLocaleDateString("pt-BR", {
@@ -34,6 +37,17 @@ const dataHojeUpper = new Date()
   .toUpperCase();
 
 export default function ListaMedicamentosPage() {
+  const isToday = (iso?: string | null) => {
+    if (!iso) return false;
+    const d = new Date(iso);
+    const now = new Date();
+    return (
+      d.getFullYear() === now.getFullYear() &&
+      d.getMonth() === now.getMonth() &&
+      d.getDate() === now.getDate()
+    );
+  };
+
   const navigate = useNavigate();
   const [lista, setLista] = useState<MedicamentoDTO[]>([]);
   const [loading, setLoading] = useState(false);
@@ -48,7 +62,9 @@ export default function ListaMedicamentosPage() {
       const dados = await medicamentoApi.listarPorUsuario(usuarioId);
 
       const filtrados = dados.filter(
-        (m) => m.horarios && m.horarios.some((h) => !h.tomadoHoje)
+        (m) =>
+          m.horarios &&
+          m.horarios.some((h) => isToday(h.proximaExecucao) && !h.tomadoHoje)
       );
 
       setLista(filtrados);
@@ -71,7 +87,6 @@ export default function ListaMedicamentosPage() {
     }
   };
 
-  // CORES DA TARJA
   const tarjaColor: Record<string, string> = {
     PRETA: "#000",
     VERMELHA: "#DB0012",
@@ -81,9 +96,12 @@ export default function ListaMedicamentosPage() {
 
   return (
     <Box sx={{ py: 4, px: 2, display: "flex", justifyContent: "center" }}>
+
+      {/* ✅ POP-UP DE NOTIFICAÇÃO */}
+      <MedicationNotifier medicamentos={lista} />
+
       <Card sx={{ width: "100%", maxWidth: 860, borderRadius: 2, boxShadow: 4 }}>
         <CardContent>
-          {/* HEADER */}
           <Stack
             direction="row"
             justifyContent="space-between"
@@ -92,12 +110,7 @@ export default function ListaMedicamentosPage() {
           >
             <Box>
               <Typography
-                sx={{
-                  fontSize: 24,
-                  fontWeight: 700,
-                  color: "primary.main",
-                  lineHeight: 1.2,
-                }}
+                sx={{ fontSize: 24, fontWeight: 700, color: "primary.main" }}
               >
                 MEDICAMENTOS EM USO
               </Typography>
@@ -119,7 +132,6 @@ export default function ListaMedicamentosPage() {
                 variant="contained"
                 startIcon={<HomeIcon />}
                 onClick={() => navigate("/home")}
-                sx={{ fontSize: 16, px: 2, borderRadius: 2 }}
               >
                 Home
               </Button>
@@ -128,7 +140,6 @@ export default function ListaMedicamentosPage() {
                 variant="outlined"
                 startIcon={<HistoryIcon />}
                 onClick={() => navigate("/medicamentos/historico")}
-                sx={{ fontSize: 16, px: 2, borderRadius: 2 }}
               >
                 Histórico
               </Button>
@@ -138,118 +149,106 @@ export default function ListaMedicamentosPage() {
                 color="success"
                 startIcon={<AddIcon />}
                 onClick={() => navigate("/medicamentos/cadastro")}
-                sx={{ fontSize: 16, px: 2, borderRadius: 2 }}
               >
                 Cadastrar
               </Button>
             </Stack>
           </Stack>
 
-          {/* LISTAGEM */}
           {lista.length === 0 ? (
             <Typography sx={{ textAlign: "center", py: 5, fontSize: 18 }}>
               Nenhum medicamento para hoje ✨
             </Typography>
           ) : (
             <Stack spacing={2}>
-              {lista.map((m) => (
-                <Box
-                  key={m.id}
-                  sx={{
-                    p: 2,
-                    borderRadius: 2,
-                    backgroundColor: "#f9f9f9",
-                    boxShadow: 1,
-                  }}
-                >
-                  {/* TÍTULO + TARJA + EDITAR/REMOVER */}
-                  <Stack
-                    direction="row"
-                    alignItems="center"
-                    justifyContent="space-between"
+              {lista.map((m) => {
+                const horariosDeHoje = m.horarios.filter((h) =>
+                  isToday(h.proximaExecucao)
+                );
+
+                return (
+                  <Box
+                    key={m.id}
+                    sx={{
+                      p: 2,
+                      borderRadius: 2,
+                      backgroundColor: "#f9f9f9",
+                      boxShadow: 1,
+                    }}
                   >
-                    <Typography sx={{ fontSize: 18, fontWeight: 700 }}>
-                      {m.nome}
-                    </Typography>
+                    <Stack
+                      direction="row"
+                      alignItems="center"
+                      justifyContent="space-between"
+                    >
+                      <Typography sx={{ fontSize: 18, fontWeight: 700 }}>
+                        {m.nome}
+                      </Typography>
 
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <Chip
-                        label={m.tarja === "SEM_TARJA" ? "COMUM" : m.tarja}
-                        size="small"
-                        sx={{
-                          bgcolor: tarjaColor[m.tarja],
-                          color: "white",
-                          fontWeight: 600,
-                        }}
-                      />
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Chip
+                          label={m.tarja === "SEM_TARJA" ? "COMUM" : m.tarja}
+                          size="small"
+                          sx={{
+                            bgcolor: tarjaColor[m.tarja],
+                            color: "white",
+                            fontWeight: 600,
+                          }}
+                        />
 
-                      {/* EDITAR */}
-                      <IconButton
-                        onClick={() =>
-                          navigate(`/medicamentos/editar/${m.id}`)
-                        }
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
+                        <IconButton onClick={() => navigate(`/medicamentos/editar/${m.id}`)}>
+                          <EditIcon fontSize="small" />
+                        </IconButton>
 
-                      {/* REMOVER */}
-                      <IconButton
-                        onClick={() => {
-                          if (
-                            confirm(
-                              "Deseja realmente remover este medicamento?"
-                            )
-                          ) {
-                            medicamentoApi.excluir(m.id)
-                              .then(() => carregar())
-                              .catch(() =>
-                                alert("Erro ao remover medicamento.")
-                              );
-                          }
-                        }}
-                      >
-                        <DeleteIcon color="error" fontSize="small" />
-                      </IconButton>
-                    </Stack>
-                  </Stack>
-
-                  <Divider sx={{ my: 1 }} />
-
-                  {/* HORÁRIOS */}
-                  <Stack spacing={1}>
-                    {m.horarios.map((h) => (
-                      <Stack
-                        key={h.id}
-                        direction="row"
-                        alignItems="center"
-                        justifyContent="space-between"
-                      >
-                        <Typography sx={{ fontSize: 18 }}>
-                          ⏰ {h.horario}
-                        </Typography>
-
-                        {h.tomadoHoje ? (
-                          <Chip label="Tomado" color="success" size="small" />
-                        ) : (
-                          <Button
-                            variant="outlined"
-                            startIcon={<CheckCircleOutlineIcon />}
-                            onClick={() => onTomar(h.id)}
-                            sx={{
-                              fontSize: 14,
-                              px: 2,
-                              py: 0.5,
-                              borderRadius: 2,
-                            }}
-                          >
-                            Tomar
-                          </Button>
-                        )}
+                        <IconButton
+                          onClick={() => {
+                            if (confirm("Deseja realmente remover este medicamento?")) {
+                              medicamentoApi.excluir(m.id)
+                                .then(() => carregar())
+                                .catch(() => alert("Erro ao remover medicamento."));
+                            }
+                          }}
+                        >
+                          <DeleteIcon color="error" fontSize="small" />
+                        </IconButton>
                       </Stack>
-                    ))}
-                  </Stack>
-                </Box>
-              ))}
+                    </Stack>
+
+                    <Divider sx={{ my: 1 }} />
+
+                    <Stack spacing={1}>
+                      {horariosDeHoje.length === 0 ? (
+                        <Typography sx={{ fontSize: 16, color: "text.secondary" }}>
+                          Nenhum horário para hoje.
+                        </Typography>
+                      ) : (
+                        horariosDeHoje.map((h) => (
+                          <Stack
+                            key={h.id}
+                            direction="row"
+                            alignItems="center"
+                            justifyContent="space-between"
+                          >
+                            <Typography sx={{ fontSize: 18 }}>⏰ {h.horario}</Typography>
+
+                            {h.tomadoHoje ? (
+                              <Chip label="Tomado" color="success" size="small" />
+                            ) : (
+                              <Button
+                                variant="outlined"
+                                startIcon={<CheckCircleOutlineIcon />}
+                                onClick={() => onTomar(h.id)}
+                              >
+                                Tomar
+                              </Button>
+                            )}
+                          </Stack>
+                        ))
+                      )}
+                    </Stack>
+                  </Box>
+                );
+              })}
             </Stack>
           )}
         </CardContent>

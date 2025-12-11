@@ -7,14 +7,12 @@ import br.pucgo.ads.projetointegrador.plataforma.entity.User;
 import br.pucgo.ads.projetointegrador.plataforma.repository.UserRepository;
 
 import jakarta.persistence.EntityNotFoundException;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class MedicamentoService {
@@ -54,7 +52,6 @@ public class MedicamentoService {
         return medicamentoRepository.findByUsuarioId(usuarioId);
     }
 
-
     // ===========================================================
     // DETALHAMENTO
     // ===========================================================
@@ -75,9 +72,8 @@ public class MedicamentoService {
         return new MedicamentoResponseDTO(medicamento, horarios, registrosDoDia);
     }
 
-
     // ===========================================================
-    // CADASTRAR VIA DTO
+    // CADASTRAR VIA DTO — COM AJUSTE DE PROXIMA EXECUCAO
     // ===========================================================
     @Transactional
     public Medicamento salvarFromDTO(MedicamentoCreateDTO dto, Long anvisaId) {
@@ -90,7 +86,6 @@ public class MedicamentoService {
         // ANVISA
         MedicamentoAnvisa anvisa = anvisaRepository.findById(anvisaId)
                 .orElseThrow(() -> new EntityNotFoundException("Medicamento ANVISA não encontrado!"));
-
         medicamento.setMedicamentoAnvisa(anvisa);
 
         medicamento.setTipoDosagem(dto.getTipoDosagem());
@@ -101,11 +96,15 @@ public class MedicamentoService {
         else
             medicamento.setTotalFrasco(dto.getTotalFrasco());
 
-        medicamento.setTarja(dto.getTarja());
+        // TARJA
+        if (dto.getTarja() != null) {
+            medicamento.setTarja(dto.getTarja());
+        }
 
-        // CONTATOS
+        // CONTATOS — validar tarja preta
         if (dto.getTarja() == TarjaTipo.PRETA &&
                 (dto.getContatosEmergenciaIds() == null || dto.getContatosEmergenciaIds().isEmpty())) {
+
             throw new IllegalArgumentException("Tarja preta exige ao menos 1 contato de emergência.");
         }
 
@@ -119,10 +118,16 @@ public class MedicamentoService {
         medicamento.setContatosEmergencia(contatos);
         medicamento.setContatarEmergencia(!contatos.isEmpty());
 
-        // HORÁRIOS
+        // ===========================================================
+        // HORÁRIOS — COM DATA DE EXECUÇÃO HOJE/AMANHÃ
+        // ===========================================================
         if (dto.getHorarios() != null) {
             List<MedicamentoHorario> horarios = dto.getHorarios().stream()
-                    .map(h -> new MedicamentoHorario(medicamento, h.getHorario()))
+                    .map(h -> {
+                        MedicamentoHorario mh = new MedicamentoHorario(medicamento, h.getHorario());
+                        mh.calcularProximaExecucao(); // 🔥 AQUI É O AJUSTE
+                        return mh;
+                    })
                     .toList();
             medicamento.setHorarios(horarios);
         }
@@ -133,9 +138,8 @@ public class MedicamentoService {
         return medicamentoRepository.save(medicamento);
     }
 
-
     // ===========================================================
-    // ATUALIZAR VIA DTO (NOVA VERSÃO COMPLETA)
+    // ATUALIZAR VIA DTO — COM AJUSTE DE PROXIMA EXECUCAO
     // ===========================================================
     @Transactional
     public MedicamentoResponseDTO atualizarFromDTO(Long id, MedicamentoUpdateDTO dto) {
@@ -143,14 +147,13 @@ public class MedicamentoService {
         Medicamento medicamento = medicamentoRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Medicamento não encontrado!"));
 
-        // ATUALIZA ANVISA
+        // ANVISA
         if (dto.getAnvisaId() != null) {
             MedicamentoAnvisa anvisa = anvisaRepository.findById(dto.getAnvisaId())
                     .orElseThrow(() -> new EntityNotFoundException("Medicamento ANVISA não encontrado!"));
             medicamento.setMedicamentoAnvisa(anvisa);
         }
 
-        // DOSAGEM
         medicamento.setTipoDosagem(dto.getTipoDosagem());
         medicamento.setDoseDiaria(dto.getDoseDiaria());
 
@@ -160,7 +163,9 @@ public class MedicamentoService {
             medicamento.setTotalFrasco(dto.getTotalFrasco());
 
         // TARJA
-        medicamento.setTarja(dto.getTarja());
+        if (dto.getTarja() != null) {
+            medicamento.setTarja(TarjaTipo.valueOf(dto.getTarja().toUpperCase()));
+        }
 
         // CONTATOS
         List<ContatoEmergencia> contatos = (dto.getContatosEmergenciaIds() != null)
@@ -173,35 +178,24 @@ public class MedicamentoService {
         medicamento.setContatosEmergencia(contatos);
         medicamento.setContatarEmergencia(!contatos.isEmpty());
 
-
         // ============================================================
-        //               HORÁRIOS — CORREÇÃO DEFINITIVA
+        // HORÁRIOS — AGORA RECRIANDO COM PRÓXIMA EXECUÇÃO
         // ============================================================
-
         List<MedicamentoHorario> horariosAtuais = medicamento.getHorarios();
 
-        // Se vier null, cria
         if (horariosAtuais == null) {
             horariosAtuais = new ArrayList<>();
             medicamento.setHorarios(horariosAtuais);
+        } else {
+            horariosAtuais.clear();
         }
 
-        // 🔥 Se for lista imutável do Hibernate → copia para ArrayList
-        if (!(horariosAtuais instanceof ArrayList)) {
-            horariosAtuais = new ArrayList<>(horariosAtuais);
-            medicamento.setHorarios(horariosAtuais);
-        }
-
-        // 🔥 Agora é seguro limpar
-        horariosAtuais.clear();
-
-        // 🔥 E adicionar novos itens
         for (HorarioDTO h : dto.getHorarios()) {
-            horariosAtuais.add(new MedicamentoHorario(medicamento, h.getHorario()));
+            MedicamentoHorario mh = new MedicamentoHorario(medicamento, h.getHorario());
+            mh.calcularProximaExecucao(); // 🔥 AQUI TAMBÉM
+            horariosAtuais.add(mh);
         }
 
-
-        // Período
         medicamento.setDataInicio(LocalDate.now());
         medicamento.setDataFim(LocalDate.now().plusDays(medicamento.calcularDias() - 1));
 
@@ -217,9 +211,9 @@ public class MedicamentoService {
     public void excluir(Long id) {
         if (!medicamentoRepository.existsById(id))
             throw new EntityNotFoundException("Medicamento não encontrado!");
+
         medicamentoRepository.deleteById(id);
     }
-
 
     // ===========================================================
     // UTILITÁRIOS
@@ -230,13 +224,17 @@ public class MedicamentoService {
     }
 
     public List<MedicamentoResponseDTO> listarPorUsuarioComDetalhes(Long usuarioId) {
+
         validarUsuario(usuarioId);
 
         return medicamentoRepository.findByUsuarioId(usuarioId).stream()
                 .map(m -> new MedicamentoResponseDTO(
                         m,
                         horarioRepository.findByMedicamentoIdOrderByHorarioAsc(m.getId()),
-                        registroRepository.findByMedicamentoIdAndDataPrevista(m.getId(), LocalDate.now())
+                        registroRepository.findByMedicamentoIdAndDataPrevista(
+                                m.getId(),
+                                LocalDate.now()
+                        )
                 ))
                 .toList();
     }
